@@ -12,8 +12,8 @@ const App = () => {
         appName='Prosperity'
         mainPage='/homescreen'
         planariaToken='eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiIxRlA4UUNNazRjWnFLYVBzcXRHZjZqZUtYeVdNVm11OUdHIiwiaXNzdWVyIjoiZ2VuZXJpYy1iaXRhdXRoIn0.SDBGcmd1czFuaTZ3TGl3WHN6djF4NEhuQ2RmVCtXL3dPKzd0bVFnWTg1Mzhiak92RTlVdy9ZdjRHWnFHYTh4WThTcjFTZnRDZ3FKbHVjbzVwcUt1dXM0PQ'
-        secretServerURL='https://cranky-bell-2cb9ac.netlify.app/'
-        dojoURL='https://musing-davinci-12f9ff.netlify.app/'
+        secretServerURL='https://staging-secretserver.babbage.systems'
+        dojoURL='https://staging-dojo.babbage.systems'
       />
       <Switch>
         <Route component={Homescreen} path='/homescreen' />
