@@ -1,3 +1,4 @@
+const webpack = require('webpack')
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const NodePolyfillPlugin = require('node-polyfill-webpack-plugin')
@@ -39,10 +40,6 @@ module.exports = {
         test: /\.(js|jsx)$/, // .js and .jsx files
         exclude: [
           /node_modules\/(?!@cwi\/react)/,
-          /src\/routes/,
-          /src\/controllers/,
-          /src\/templates/,
-          /src\/tests/,
           /public/
         ], // excluding the node_modules folder
         use: {
@@ -72,6 +69,10 @@ module.exports = {
     modules: ['src', 'node_modules'],
     fallback: {
       fs: false
+      // buffer: require.resolve('buffer/')
     }
   }
+  // node: {
+  //   global: true
+  // }
 }

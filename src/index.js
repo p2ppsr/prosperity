@@ -1,3 +1,4 @@
+window.Buffer = window.Buffer || require("buffer").Buffer;
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { UserInterface } from '@cwi/react'
@@ -10,6 +11,8 @@ const CWI = require('@cwi/core')
 //     : 'prod'
 const ENV = 'staging'
 const isPackaged = false
+
+console.log(require('buffer').Buffer)
 
 ;(async () => {
   window.CWI = CWI

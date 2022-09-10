@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@cwi/core": "^0.3.39",
-    "@cwi/react": "^0.2.1",
+    "@cwi/core": "^0.3.41",
+    "@cwi/react": "^0.2.3",
     "react": "^17.0.1",
     "react-dom": "^17.0.1"
   },
