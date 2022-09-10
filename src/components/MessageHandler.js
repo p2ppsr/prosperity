@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import * as CWI from '@cwi/core'
+const CWI = require('@cwi/core')
 
 const MessageHandler = () => {
   useEffect(() => {

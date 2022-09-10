@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import Draggable from 'react-draggable'
 import {
-  TextField, Button, Card, DialogTitle
+  TextField, Button, Card, DialogTitle, Typography
 } from '@material-ui/core'
 import style from './style'
 import { makeStyles } from '@material-ui/styles'
@@ -69,7 +69,11 @@ const Window = React.memo(({
   </Draggable>
 ))
 
-const Homescreen = () => {
+const Homescreen = ({
+  babbageAuthenticated,
+  babbageFocused,
+  setBabbageFocused
+}) => {
   const [windows, setWindows] = useState([])
   const [newWindowURL, setNewWindowURL] = useState(
     'https://convo.babbage.systems'
@@ -97,6 +101,29 @@ const Homescreen = () => {
       return newWindows
     })
   }, [])
+
+  if (!babbageAuthenticated) {
+    return (
+      <center>
+        <br />
+        <br />
+        <br />
+        <Typography variant='h2' align='center' paragraph>
+          Welcome to Prosperity Desktop
+        </Typography>
+        <br />
+        <br />
+        <Button
+          onClick={() => setBabbageFocused(true)}
+          color='primary'
+          variant='contained'
+          size='large'
+        >
+          Start
+        </Button>
+      </center>
+    )
+  }
 
   return (
     <div className={classes.homescreen_bg}>
@@ -134,6 +161,16 @@ const Homescreen = () => {
           size='large'
         >
           Add Window
+        </Button>
+        <br />
+        <br />
+        <Button
+          onClick={() => setBabbageFocused(true)}
+          color='primary'
+          variant='contained'
+          size='large'
+        >
+          Babbage
         </Button>
       </center>
     </div>
