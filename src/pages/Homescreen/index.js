@@ -218,7 +218,12 @@ const Homescreen = ({
           </>
         ) : (
           <>
-            <Typography variant='h2' align='center' paragraph>
+              <Typography
+                color='white'
+                variant='h2'
+                align='center'
+                paragraph
+              >
               Welcome to Prosperity Desktop
             </Typography>
             <br />
