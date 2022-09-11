@@ -2,9 +2,9 @@ import React, { useCallback, useState } from 'react'
 import Draggable from 'react-draggable'
 import {
   TextField, Button, Card, DialogTitle, Typography
-} from '@material-ui/core'
+} from '@mui/material'
 import style from './style'
-import { makeStyles } from '@material-ui/styles'
+import { makeStyles } from '@mui/styles'
 const useStyles = makeStyles(style, {
   name: 'Homescreen'
 })
@@ -12,28 +12,54 @@ const useStyles = makeStyles(style, {
 const getWindowID = () => Buffer.from(require('crypto').randomBytes(8)).toString('base64')
 
 const Window = React.memo(({
-  classes, id, title, url, onFocus, onClose, focused
-}) => (
+  classes,
+  id,
+  title,
+  url,
+  onFocus,
+  focused,
+  onMinimize,
+  minimized,
+  onClose
+}) => {
+  const [position, setPosition] = useState({ x: 20, y: 20 })
+  const [oldPosition, setOldPosition] = useState({})
+  const [maximized, setMaximized] = useState(false)
+  return (
   <Draggable
     handle={`.${classes.window_title_bar}`}
     defaultPosition={{ x: 20, y: 20 }}
-    bounds='parent'
+    position={position}
+    onDrag={setPosition}
+    disabled={maximized}
   >
     <Card
-      className={focused ? classes.focused_window : classes.window}
+      className={
+        minimized
+          ? classes.hidden_window
+          : focused
+            ? maximized
+              ? classes.maximized_focused_window
+              : classes.focused_window
+            : maximized
+              ? classes.maximized_window
+              : classes.window
+      }
       elevation={24}
       onClick={() => onFocus(id)}
     >
       <div className={classes.window_inner}>
-        <DialogTitle
+        <div
           className={classes.window_title_bar}
         >
-          {title}
+          <Typography className={classes.window_title_text}>
+            {title}
+          </Typography>
           <div className={classes.button_wrap}>
             <Button
               onClick={e => {
                 e.stopPropagation()
-                onClose(id)
+                onMinimize(id)
               }}
             >
               ▁
@@ -41,7 +67,14 @@ const Window = React.memo(({
             <Button
               onClick={e => {
                 e.stopPropagation()
-                onClose(id)
+                if (!maximized) {
+                  setOldPosition(position)
+                  setPosition({ x: 0, y: 0 })
+                  setMaximized(true)
+                } else {
+                  setPosition(oldPosition)
+                  setMaximized(false)
+                }
               }}
             >
               🬀
@@ -56,7 +89,7 @@ const Window = React.memo(({
               ✗
             </Button>
           </div>
-        </DialogTitle>
+        </div>
         <iframe
           src={url}
           className={classes.frame}
@@ -67,7 +100,8 @@ const Window = React.memo(({
       </div>
     </Card>
   </Draggable>
-))
+  )
+})
 
 const Homescreen = ({
   babbageAuthenticated,
@@ -76,7 +110,7 @@ const Homescreen = ({
 }) => {
   const [windows, setWindows] = useState([])
   const [newWindowURL, setNewWindowURL] = useState(
-    'https://convo.babbage.systems'
+    'https://projectbabbage.com'
   )
   const classes = useStyles()
   const [focusedWindow, setFocusedWindow] = useState(null)
@@ -85,9 +119,10 @@ const Homescreen = ({
     const id = getWindowID()
     setWindows(windows => {
       const newWindows = windows.concat({
-        title: 'New Window',
+        title: new URL(url).host,
         URL: url,
-        id: id
+        id: id,
+        minimized: false
       })
       return newWindows
     })
@@ -102,28 +137,42 @@ const Homescreen = ({
     })
   }, [])
 
-  if (!babbageAuthenticated) {
-    return (
-      <center>
-        <br />
-        <br />
-        <br />
-        <Typography variant='h2' align='center' paragraph>
-          Welcome to Prosperity Desktop
-        </Typography>
-        <br />
-        <br />
-        <Button
-          onClick={() => setBabbageFocused(true)}
-          color='primary'
-          variant='contained'
-          size='large'
-        >
-          Start
-        </Button>
-      </center>
-    )
-  }
+  const minimizeWindow = useCallback(id => {
+    setWindows(windows => {
+      let newWindows = [...windows]
+      for (const wind of newWindows) {
+        if (wind.id === id) {
+          wind.minimized = true
+          if (id === focusedWindow) {
+            // TODO: Track focus history, return to previously-focused window
+            setFocusedWindow(null)
+          }
+        }
+      }
+      return newWindows
+    })
+  }, [focusedWindow])
+
+  const onTaskbarWindowClicked = useCallback(id => {
+    setWindows(windows => {
+      let newWindows = [...windows]
+      for (const wind of newWindows) {
+        if (wind.id === id) {
+          if (wind.minimized) { // If minimized, restore and focus
+            wind.minimized = false
+            setFocusedWindow(wind.id)
+          } else if (wind.id === focusedWindow) { // If focused, minimize
+            wind.minimized = true
+            // TODO: Track focus history, return to previously-focused window
+            setFocusedWindow(null)
+          } else { // Otherwise, focus
+            setFocusedWindow(wind.id)
+          }
+        }
+      }
+      return newWindows
+    })
+  }, [focusedWindow])
 
   return (
     <div className={classes.homescreen_bg}>
@@ -136,6 +185,8 @@ const Homescreen = ({
             key={w.id}
             id={w.id}
             onFocus={() => setFocusedWindow(w.id)}
+            onMinimize={minimizeWindow}
+            minimized={w.minimized}
             onClose={closeWindow}
             classes={classes}
             url={w.URL}
@@ -148,31 +199,67 @@ const Homescreen = ({
         <br />
         <br />
         <br />
-        <TextField
-          onChange={e => setNewWindowURL(e.target.value)}
-          defaultValue={newWindowURL}
-        />
-        <br />
-        <br />
-        <Button
-          onClick={() => addWindow(newWindowURL)}
-          color='primary'
-          variant='contained'
-          size='large'
-        >
-          Add Window
-        </Button>
-        <br />
-        <br />
+        {babbageAuthenticated ? (
+          <>
+            <TextField
+              onChange={e => setNewWindowURL(e.target.value)}
+              defaultValue={newWindowURL}
+            />
+            <br />
+            <br />
+            <Button
+              onClick={() => addWindow(newWindowURL)}
+              color='primary'
+              variant='contained'
+              size='large'
+            >
+              Add Window
+            </Button>
+          </>
+        ) : (
+          <>
+            <Typography variant='h2' align='center' paragraph>
+              Welcome to Prosperity Desktop
+            </Typography>
+            <br />
+            <br />
+            <Button
+              onClick={() => setBabbageFocused(true)}
+              color='primary'
+              variant='contained'
+              size='large'
+            >
+              Start
+            </Button>
+          </>
+        )}
+      </center>
+      <div className={classes.taskbar}>
         <Button
           onClick={() => setBabbageFocused(true)}
           color='primary'
           variant='contained'
           size='large'
+          style={{
+            textTransform: 'capitalize'
+          }}
         >
-          Babbage
+          BabbageOS
         </Button>
-      </center>
+        {windows.map((w, i) => (
+          <div
+            onClick={() => onTaskbarWindowClicked(w.id)}
+            key={i}
+            className={
+              w.id === focusedWindow
+                ? classes.focused_taskbar_window
+                : classes.taskbar_window
+            }
+          >
+            {w.title}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

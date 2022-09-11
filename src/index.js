@@ -4,10 +4,9 @@ import { UserInterface } from '@cwi/react'
 const CWI = require('@cwi/core')
 import MessageHandler from './components/MessageHandler.js'
 import Homescreen from './pages/Homescreen/index.js'
-import { Dialog } from '@material-ui/core'
-import { ThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-const theme = createMuiTheme();
-
+import { Dialog } from '@mui/material'
+import { ThemeProvider, StyledEngineProvider, createTheme } from '@mui/material/styles';
+const theme = createTheme()
 
 // const ENV = window.location.host.contains('localhost')
 //   ? 'dev'
@@ -30,30 +29,33 @@ const App = props => {
   
   return (
     <div>
-      <ThemeProvider theme={theme}>
-      <MessageHandler />
-      <Homescreen
-        babbageAuthenticated={babbageAuthenticated}
-        babbageFocused={babbageFocused}
-        setBabbageFocused={setBabbageFocused}
-      />
-      <Dialog
-        open={babbageFocused}
-        onClose={() => setBabbageFocused(false)}
-        keepMounted
-        fullWidth
-        maxWidth="lg"
-      >
-        <UserInterface
-          isFocused={() => babbageFocused}
-          onFocusRequested={() => setBabbageFocused(true)}
-          onFocusRelinquished={() => setBabbageFocused(false)}
-          {...props}
+      <StyledEngineProvider injectFirst>
+        <ThemeProvider theme={theme}>
+        <MessageHandler />
+        <Homescreen
+          babbageAuthenticated={babbageAuthenticated}
+          babbageFocused={babbageFocused}
+          setBabbageFocused={setBabbageFocused}
         />
-        </Dialog>
-      </ThemeProvider>
+        <Dialog
+          open={babbageFocused}
+          onClose={() => setBabbageFocused(false)}
+            keepMounted
+            fullWidth
+            maxWidth='lg'
+            scroll='body'
+          >
+          <UserInterface
+            isFocused={() => babbageFocused}
+            onFocusRequested={() => setBabbageFocused(true)}
+            onFocusRelinquished={() => setBabbageFocused(false)}
+            {...props}
+              />
+          </Dialog>
+        </ThemeProvider>
+      </StyledEngineProvider>
     </div>
-  )
+  );
 }
 
 ;(async () => {

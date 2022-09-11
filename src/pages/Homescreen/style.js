@@ -20,13 +20,15 @@ export default theme => ({
   },
   window_title_bar: {
     backgroundColor: 'lightblue',
-    color: 'white !important',
     cursor: 'arrow !important',
     userSelect: 'none',
-    '& > h2': {
-      display: 'grid',
-      gridTemplateColumns: '1fr auto'
-    }
+    display: 'grid',
+    gridTemplateColumns: '1fr auto',
+    alignItems: 'center'
+  },
+  window_title_text: {
+    fontWeight: 'bold',
+    marginLeft: '0.5em'
   },
   window: {
     width: '60em',
@@ -40,6 +42,25 @@ export default theme => ({
     position: 'absolute',
     zIndex: 5
   },
+  maximized_window: {
+    width: '100vw',
+    height: 'calc(100vh - 3em)',
+    left: '0px',
+    top: '0px',
+    position: 'fixed',
+    zIndex: 1
+  },
+  maximized_focused_window: {
+    width: '100vw',
+    height: 'calc(100vh - 3em)',
+    left: '0px',
+    top: '0px',
+    position: 'fixed',
+    zIndex: 5
+  },
+  hidden_window: {
+    display: 'none'
+  },
   window_inner: {
     display: 'grid',
     gridTemplateRows: 'auto 1fr',
@@ -48,5 +69,40 @@ export default theme => ({
   frame: {
     width: '100%',
     height: '100%'
+  },
+  taskbar: {
+    left: '0px',
+    top: 'calc(100vh - 3em)',
+    height: '3em',
+    backgroundColor: 'yellow',
+    display: 'flex',
+    flexDirection: 'row',
+    width: '100vw',
+    alignItems: 'center',
+    position: 'fixed',
+    paddingLeft: '0.5em',
+    zIndex: '10'
+  },
+  taskbar_window: {
+    backgroundColor: 'grey',
+    paddingLeft: '0.5em',
+    paddingRight: '0.5em',
+    marginLeft: '0.5em',
+    marginRight: '0.5em',
+    height: '2.2em',
+    lineHeight: '2.2em',
+    cursor: 'pointer !important',
+    alignItems: 'center'
+  },
+  focused_taskbar_window: {
+    backgroundColor: 'red',
+    paddingLeft: '0.5em',
+    paddingRight: '0.5em',
+    marginLeft: '0.5em',
+    marginRight: '0.5em',
+    height: '2.2em',
+    lineHeight: '2.2em',
+    cursor: 'pointer !important',
+    alignItems: 'center'
   }
 })
