@@ -84,13 +84,6 @@ const App = props => {
     privilegedKeyTimeout: 0
   })
 
-  // TEMP — remove when Authrite is fixed
-  try {
-    if (await window.CWI.isAuthenticated()) {
-      await window.CWI.getNinja().getAvatar()
-    }
-  } catch (e) {}
-
   ReactDOM.render(
     <App
       saveLocalSnapshot={async () => {
