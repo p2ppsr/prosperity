@@ -43,7 +43,12 @@ const App = props => {
             keepMounted
             fullWidth
             maxWidth='lg'
-            scroll='body'
+            // style={{
+            // TODO Make the dialog full 100vh height
+            // (not calc(100vh - 64px))
+            //   margin: '0px auto !important',
+            //   maxHeight: '100vh !important'
+            // }}
           >
           <UserInterface
             isFocused={() => babbageFocused}

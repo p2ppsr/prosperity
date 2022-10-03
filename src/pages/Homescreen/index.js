@@ -27,10 +27,13 @@ const Window = React.memo(({
   const [maximized, setMaximized] = useState(false)
   return (
   <Draggable
-    handle={`.${classes.window_title_bar}`}
+    handle={`.${classes.window_title_text}`}
     defaultPosition={{ x: 20, y: 20 }}
     position={position}
-    onDrag={setPosition}
+    onDrag={x => {
+      setPosition(x)
+      console.log(x)
+    }}
     disabled={maximized}
   >
     <Card
