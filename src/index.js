@@ -13,8 +13,8 @@ const theme = createTheme()
 //   : window.location.host.contains('staging')
 //     ? 'staging'
 //     : 'prod'
-const ENV = 'staging'
-const isPackaged = false
+const ENV = 'dev'
+const isPackaged = true
 
 const App = props => {
   const [babbageFocused, setBabbageFocused] = useState(false)

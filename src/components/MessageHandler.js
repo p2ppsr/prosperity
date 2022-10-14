@@ -15,37 +15,28 @@ const MessageHandler = () => {
       if (e.data.type !== 'CWI' || !e.isTrusted) return
       const call = e.data.call
       let func
-      if (call === 'listFunctions') {
-        const funcs = []
-        const objs = []
-        Object.keys(CWI).forEach(x => {
-          if (typeof CWI[x] === 'function') {
-            funcs.push(x)
-          } else {
-            objs.push(x)
-          }
-        })
-        objs.forEach(x => {
-          Object.keys(CWI[x]).forEach(y => {
-            funcs.push(`${x}.${y}`)
-          })
-        })
-        e.source.postMessage({
-          type: 'CWI', result: funcs, id: e.data.id
-        }, e.origin)
-        return
-      } else if (call.indexOf('.') !== -1) {
+      if (call.indexOf('.') !== -1) {
         func = CWI[call.split('.')[0]][call.split('.')[1]]
       } else {
         func = CWI[call]
       }
-      const result = await func({
-        ...e.data.params,
-        originator: e.origin
-      })
-      e.source.postMessage({
-        type: 'CWI', result, id: e.data.id
-      }, e.origin)
+      try {
+        const result = await func({
+          ...e.data.params,
+          originator: e.origin
+        })
+        e.source.postMessage({
+          type: 'CWI', result, id: e.data.id
+        }, e.origin)
+      } catch (error) {
+        e.source.postMessage({
+          type: 'CWI',
+          id: e.data.id,
+          status: 'error',
+          code: error.code || 'ERR_UNKNOWN',
+          description: error.message
+        }, e.origin)
+      }
     })
   }, [])
 
