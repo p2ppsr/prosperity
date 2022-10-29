@@ -3,16 +3,14 @@ const CWI = require('@cwi/core')
 
 const MessageHandler = () => {
   useEffect(() => {
-    /*
-      {
-        type: 'CWI',
-        call: 'ninja.getPaymail',
-        params: {},
-        id: 'fooisabar'
-      }
-    */
     window.addEventListener('message', async e => {
-      if (e.data.type !== 'CWI' || !e.isTrusted) return
+      if (
+        e.data.type !== 'CWI' ||
+        !e.isTrusted ||
+        typeof e.data.call !== 'string'
+      ) {
+        return
+      }
       const call = e.data.call
       let func
       if (call.indexOf('.') !== -1) {
@@ -21,7 +19,7 @@ const MessageHandler = () => {
         func = CWI[call]
       }
       try {
-        const result = await func({
+        let result = await func({
           ...e.data.params,
           originator: e.origin
         })

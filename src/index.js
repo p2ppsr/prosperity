@@ -13,7 +13,7 @@ const theme = createTheme()
 //   : window.location.host.contains('staging')
 //     ? 'staging'
 //     : 'prod'
-const ENV = 'dev'
+const ENV = 'staging'
 const isPackaged = true
 
 const App = props => {
