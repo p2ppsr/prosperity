@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@cwi/core": "^0.3.54",
-    "@cwi/react": "^0.2.16",
+    "@cwi/core": "^0.3.58",
+    "@cwi/react": "^0.2.18",
     "@mui/material": "^5.10.4",
     "@mui/styles": "^5.10.3",
     "react": "^17.0.1",
