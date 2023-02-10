@@ -20,6 +20,11 @@ jobs:
         with:
          ref: ${{ env.CURRENT_BRANCH }}
          lfs: true
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: CWI_NPM_TOKEN=${{ secrets.CWI_NPM_TOKEN }} npm ci
+      - run: npm run build
       - uses: RafikFarhad/push-to-gcr-github-action@v4.1
         with:
           gcloud_service_key: ${{ secrets.DOCKER_REGISTRY_PUSH_KEY }}
