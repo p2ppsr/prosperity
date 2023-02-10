@@ -8,13 +8,12 @@ import { Dialog } from '@mui/material'
 import { ThemeProvider, StyledEngineProvider, createTheme } from '@mui/material/styles';
 const theme = createTheme()
 
-// const ENV = window.location.host.contains('localhost')
-//   ? 'dev'
-//   : window.location.host.contains('staging')
-//     ? 'staging'
-//     : 'prod'
-const ENV = 'staging'
-const isPackaged = true
+const ENV = window.location.host.contains('localhost')
+  ? 'dev'
+  : window.location.host.contains('staging')
+    ? 'staging'
+    : 'prod'
+const isPackaged = ENV !== 'dev'
 
 const App = props => {
   const [babbageFocused, setBabbageFocused] = useState(false)
@@ -81,10 +80,10 @@ const App = props => {
       : ENV === 'staging'
         ? 'https://staging-dojo.babbage.systems'
         : 'https://dojo.babbage.systems',
-    bridgeportResolvers: ENV === 'dev'
-      ? ['http://localhost:3103']
+    confederacyHost: ENV === 'dev'
+      ? 'http://localhost:3103'
       : ENV === 'staging'
-        ? ['https://staging-bridgeport.babbage.systems']
+        ? 'https://staging-confederacy.babbage.systems'
         : undefined,
     privilegedKeyTimeout: 0
   })
