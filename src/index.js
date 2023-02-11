@@ -8,9 +8,9 @@ import { Dialog } from '@mui/material'
 import { ThemeProvider, StyledEngineProvider, createTheme } from '@mui/material/styles';
 const theme = createTheme()
 
-const ENV = window.location.host.contains('localhost')
+const ENV = window.location.host.indexOf('localhost') !== -1
   ? 'dev'
-  : window.location.host.contains('staging')
+  : window.location.host.indexOf('staging') !== -1
     ? 'staging'
     : 'prod'
 const isPackaged = ENV !== 'dev'
