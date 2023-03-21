@@ -22,22 +22,22 @@ const Window = React.memo(({
   minimized,
   onClose
 }) => {
-  const [position, setPosition] = useState({ x: 20, y: 20 })
+  const [position, setPosition] = useState({ x: 0, y: 0 })
   const [oldPosition, setOldPosition] = useState({})
-  const [maximized, setMaximized] = useState(false)
+  const [maximized, setMaximized] = useState(true)
   return (
-  <Draggable
-    handle={`.${classes.window_title_text}`}
-    defaultPosition={{ x: 20, y: 20 }}
-    position={position}
-    onDrag={x => {
-      setPosition(x)
-      console.log(x)
-    }}
-    disabled={maximized}
-  >
-    <Card
-      className={
+    <Draggable
+      handle={`.${classes.window_title_text}`}
+      defaultPosition={{ x: 20, y: 20 }}
+      position={position}
+      onDrag={x => {
+        setPosition(x)
+        console.log(x)
+      }}
+      disabled={maximized}
+    >
+      <Card
+        className={
         minimized
           ? classes.hidden_window
           : focused
@@ -48,61 +48,61 @@ const Window = React.memo(({
               ? classes.maximized_window
               : classes.window
       }
-      elevation={24}
-      onClick={() => onFocus(id)}
-    >
-      <div className={classes.window_inner}>
-        <div
-          className={classes.window_title_bar}
-        >
-          <Typography className={classes.window_title_text}>
-            {title}
-          </Typography>
-          <div className={classes.button_wrap}>
-            <Button
-              onClick={e => {
-                e.stopPropagation()
-                onMinimize(id)
-              }}
-            >
-              ▁
-            </Button>
-            <Button
-              onClick={e => {
-                e.stopPropagation()
-                if (!maximized) {
-                  setOldPosition(position)
-                  setPosition({ x: 0, y: 0 })
-                  setMaximized(true)
-                } else {
-                  setPosition(oldPosition)
-                  setMaximized(false)
-                }
-              }}
-            >
-              🬀
-            </Button>
-            <Button
-              color='secondary'
-              onClick={e => {
-                e.stopPropagation()
-                onClose(id)
-              }}
-            >
-              ✗
-            </Button>
+        elevation={24}
+        onClick={() => onFocus(id)}
+      >
+        <div className={classes.window_inner}>
+          <div
+            className={classes.window_title_bar}
+          >
+            <Typography className={classes.window_title_text}>
+              {title}
+            </Typography>
+            <div className={classes.button_wrap}>
+              <Button
+                onClick={e => {
+                  e.stopPropagation()
+                  onMinimize(id)
+                }}
+              >
+                ▁
+              </Button>
+              <Button
+                onClick={e => {
+                  e.stopPropagation()
+                  if (!maximized) {
+                    setOldPosition(position)
+                    setPosition({ x: 0, y: 0 })
+                    setMaximized(true)
+                  } else {
+                    setPosition(oldPosition)
+                    setMaximized(false)
+                  }
+                }}
+              >
+                🬀
+              </Button>
+              <Button
+                color='secondary'
+                onClick={e => {
+                  e.stopPropagation()
+                  onClose(id)
+                }}
+              >
+                ✗
+              </Button>
+            </div>
           </div>
+          <iframe
+            src={url}
+            className={classes.frame}
+            seamless
+            allow='camera;microphone;fullscreen;geolocation'
+            frameBorder={0}
+          />
         </div>
-        <iframe
-          src={url}
-          className={classes.frame}
-          seamless
-          allow='camera;microphone;fullscreen;geolocation'
-          frameBorder={0}
-        />
-      </div>
-    </Card>
-  </Draggable>
+      </Card>
+    </Draggable>
   )
 })
 
@@ -124,7 +124,7 @@ const Homescreen = ({
       const newWindows = windows.concat({
         title: new URL(url).host,
         URL: url,
-        id: id,
+        id,
         minimized: false
       })
       return newWindows
@@ -142,7 +142,7 @@ const Homescreen = ({
 
   const minimizeWindow = useCallback(id => {
     setWindows(windows => {
-      let newWindows = [...windows]
+      const newWindows = [...windows]
       for (const wind of newWindows) {
         if (wind.id === id) {
           wind.minimized = true
@@ -158,7 +158,7 @@ const Homescreen = ({
 
   const onTaskbarWindowClicked = useCallback(id => {
     setWindows(windows => {
-      let newWindows = [...windows]
+      const newWindows = [...windows]
       for (const wind of newWindows) {
         if (wind.id === id) {
           if (wind.minimized) { // If minimized, restore and focus
@@ -202,45 +202,47 @@ const Homescreen = ({
         <br />
         <br />
         <br />
-        {babbageAuthenticated ? (
-          <>
-            <TextField
-              onChange={e => setNewWindowURL(e.target.value)}
-              defaultValue={newWindowURL}
-            />
-            <br />
-            <br />
-            <Button
-              onClick={() => addWindow(newWindowURL)}
-              color='primary'
-              variant='contained'
-              size='large'
-            >
-              Add Window
-            </Button>
-          </>
-        ) : (
-          <>
+        {babbageAuthenticated
+          ? (
+            <>
+              <TextField
+                onChange={e => setNewWindowURL(e.target.value)}
+                defaultValue={newWindowURL}
+              />
+              <br />
+              <br />
+              <Button
+                onClick={() => addWindow(newWindowURL)}
+                color='primary'
+                variant='contained'
+                size='large'
+              >
+                Add Window
+              </Button>
+            </>
+            )
+          : (
+            <>
               <Typography
                 color='white'
                 variant='h2'
                 align='center'
                 paragraph
               >
-              Welcome to Prosperity Desktop
-            </Typography>
-            <br />
-            <br />
-            <Button
-              onClick={() => setBabbageFocused(true)}
-              color='primary'
-              variant='contained'
-              size='large'
-            >
-              Start
-            </Button>
-          </>
-        )}
+                Welcome to Prosperity Desktop
+              </Typography>
+              <br />
+              <br />
+              <Button
+                onClick={() => setBabbageFocused(true)}
+                color='primary'
+                variant='contained'
+                size='large'
+              >
+                Start
+              </Button>
+            </>
+            )}
       </center>
       <div className={classes.taskbar}>
         <Button
