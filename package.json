@@ -5,7 +5,7 @@
   "dependencies": {
     "@cwi/core": "^0.3.82",
     "@cwi/react": "^0.2.31",
-    "@mui/material": "^5.10.4",
+    "@mui/material": "^5.14.13",
     "@mui/styles": "^5.10.3",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
