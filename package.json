@@ -1,6 +1,6 @@
 {
   "name": "prosperity",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "dependencies": {
     "@cwi/core": "^0.3.175",
