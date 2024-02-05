@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@cwi/core": "^0.3.203",
-    "@cwi/react": "^0.2.72",
+    "@cwi/react": "^0.2.73",
     "@mui/material": "^5.14.5",
     "@mui/styles": "^5.10.3",
     "react": "^17.0.2",
