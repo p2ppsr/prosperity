@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom'
 import { UserInterface } from '@cwi/react'
-const CWI = require('@cwi/core')
 import MessageHandler from './components/MessageHandler.js'
 import Homescreen from './pages/Homescreen/index.js'
 import { Dialog } from '@mui/material'
-import { ThemeProvider, StyledEngineProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider, StyledEngineProvider, createTheme } from '@mui/material/styles'
+import { DojoExpressClient } from 'ninja-base'
+const CWI = require('@cwi/core')
 const theme = createTheme()
 
 const ENV = window.location.host.indexOf('localhost') !== -1
@@ -14,6 +15,13 @@ const ENV = window.location.host.indexOf('localhost') !== -1
     ? 'staging'
     : 'prod'
 const isPackaged = ENV !== 'dev'
+
+const configureCloudDojo = (dojoChain) => {
+  const serviceUrl = `https://${dojoChain === 'test' ? 'staging-' : ''}dojo.babbage.systems`
+  const dojo = new DojoExpressClient(dojoChain, serviceUrl)
+  const dojoSyncConfig = dojoChain === 'test' ? [] : []
+  return { dojo, dojoSyncConfig }
+}
 
 const App = props => {
   const [babbageFocused, setBabbageFocused] = useState(false)
@@ -25,47 +33,50 @@ const App = props => {
       setBabbageAuthenticated(true)
     })()
   }, [])
-  
+
   return (
     <div>
       <StyledEngineProvider injectFirst>
         <ThemeProvider theme={theme}>
-        <MessageHandler />
-        <Homescreen
-          babbageAuthenticated={babbageAuthenticated}
-          babbageFocused={babbageFocused}
-          setBabbageFocused={setBabbageFocused}
-        />
-        <Dialog
-          open={babbageFocused}
-          onClose={() => setBabbageFocused(false)}
+          <MessageHandler />
+          <Homescreen
+            babbageAuthenticated={babbageAuthenticated}
+            babbageFocused={babbageFocused}
+            setBabbageFocused={setBabbageFocused}
+          />
+          <Dialog
+            open={babbageFocused}
+            onClose={() => setBabbageFocused(false)}
             keepMounted
             fullWidth
             maxWidth='lg'
-            // style={{
-            // TODO Make the dialog full 100vh height
-            // (not calc(100vh - 64px))
-            //   margin: '0px auto !important',
-            //   maxHeight: '100vh !important'
-            // }}
           >
-          <UserInterface
-            isFocused={() => babbageFocused}
-            onFocusRequested={() => setBabbageFocused(true)}
-            onFocusRelinquished={() => setBabbageFocused(false)}
-            {...props}
-              />
+            <UserInterface
+              isFocused={() => babbageFocused}
+              onFocusRequested={() => setBabbageFocused(true)}
+              onFocusRelinquished={() => setBabbageFocused(false)}
+              {...props}
+            />
           </Dialog>
         </ThemeProvider>
       </StyledEngineProvider>
     </div>
-  );
+  )
 }
 
-;(async () => {
+(async () => {
+  // Set up Dojo
+  const dojoChain = ENV === 'dev' || ENV === 'staging'
+    ? 'test'
+    : 'main'
+
+  const { dojo, dojoSyncConfig } = configureCloudDojo(dojoChain)
+
   window.CWI = CWI
   await CWI.initialize({
-    stateSnapshot: localStorage.stateSnapshot,
+    stateSnapshot: window.localStorage.stateSnapshot,
+    dojo,
+    dojoSyncConfig,
     secretServerURL: ENV === 'dev'
       ? isPackaged
         ? 'https://staging-secretserver.babbage.systems'
@@ -73,13 +84,6 @@ const App = props => {
       : ENV === 'staging'
         ? 'https://staging-secretserver.babbage.systems'
         : 'https://secretserver.babbage.systems',
-    dojoURL: ENV === 'dev'
-      ? isPackaged
-        ? 'https://staging-dojo.babbage.systems'
-        : 'http://localhost:3102'
-      : ENV === 'staging'
-        ? 'https://staging-dojo.babbage.systems'
-        : 'https://dojo.babbage.systems',
     confederacyHost: ENV === 'dev'
       ? 'http://localhost:3103'
       : ENV === 'staging'
