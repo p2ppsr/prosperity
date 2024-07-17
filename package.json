@@ -3,11 +3,11 @@
   "version": "0.2.49",
   "private": true,
   "dependencies": {
-    "@cwi/core": "^0.4.51",
-    "@cwi/react": "^0.3.67",
+    "@cwi/core": "^0.4.53",
+    "@cwi/react": "^0.3.68",
     "@mui/material": "^5.14.5",
     "@mui/styles": "^5.10.3",
-    "ninja-base": "^0.3.40",
+    "ninja-base": "^0.3.42",
     "react": "^17.0.2",
     "react-dom": "^17.0.1",
     "react-draggable": "^4.4.5"
