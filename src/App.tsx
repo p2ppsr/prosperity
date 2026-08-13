@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Rnd } from 'react-rnd'
 import {
-  AppWindow, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, CircleHelp,
-  Cloud, ExternalLink, Fullscreen, Grid3X3, LockKeyhole, Maximize2, Menu,
+  AppWindow, ArrowLeft, Bell, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp,
+  Cloud, ExternalLink, Fullscreen, Grid3X3, LockKeyhole, Maximize2, Menu, PanelLeft, PanelRight,
   MessageCircle, Minus, MonitorUp, MoreHorizontal, Plus, RotateCcw, Search,
-  Settings as SettingsIcon, Smartphone, WalletCards, Wifi, X
+  RefreshCw, Settings as SettingsIcon, Smartphone, Sparkles, WalletCards, Wifi, X
 } from 'lucide-react'
 
 import { AppIcon } from './components/AppIcon'
@@ -13,7 +13,9 @@ import { DEFAULT_APPS } from './data/apps'
 import { resolveFileApp } from './lib/fileAssociations'
 import { EMBEDDED_APP_PERMISSIONS, frameWalletBridge } from './lib/frameWalletBridge'
 import { nudgeDesktopItem, positionDesktopItem, reorderMobileItem } from './lib/layout'
+import { metanetNotificationStore, type MetanetNotification } from './lib/notifications'
 import { createDefaultProfile, removeInstalledApp, walletInstallUrl, walletProfileStore } from './lib/profile'
+import { resizeSnappedWindow, snapWindowState, toggleMaximizedWindow, type WindowSnap } from './lib/windows'
 import type {
   BabbageAppManifestV1, BabbageDesktopFileV1, DesktopItem, MobileItem,
   PersistedProfileV1, WindowBounds, WindowState
@@ -66,8 +68,12 @@ export default function App() {
   const [mobileAppId, setMobileAppId] = useState<string | null>(null)
   const [mobileEditing, setMobileEditing] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<MetanetNotification[]>([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [notificationsError, setNotificationsError] = useState('')
   const desktopRef = useRef<HTMLDivElement>(null)
   const zIndex = useRef(20)
+  const seenNotificationIds = useRef<Set<string> | null>(null)
   const isMobile = useMobile()
 
   useEffect(() => {
@@ -85,6 +91,35 @@ export default function App() {
     })
     return () => { active = false }
   }, [])
+
+  const refreshNotifications = useCallback(async () => {
+    if (walletStatus !== 'connected') return
+    setNotificationsLoading(true)
+    try {
+      const next = await metanetNotificationStore.list()
+      const previous = seenNotificationIds.current
+      setNotifications(next)
+      setNotificationsError('')
+      if (previous && profile.settings.desktopNotifications && 'Notification' in window && Notification.permission === 'granted') {
+        next.filter((item) => !previous.has(item.id)).forEach((item) => {
+          const alert = new Notification(item.title, { body: item.body, tag: `babbage-os-${item.id}` })
+          alert.onclick = () => { window.focus(); setNotificationsOpen(true); alert.close() }
+        })
+      }
+      seenNotificationIds.current = new Set(next.map((item) => item.id))
+    } catch {
+      setNotificationsError('Metanet activity is unavailable. Unlock your wallet and retry.')
+    } finally {
+      setNotificationsLoading(false)
+    }
+  }, [profile.settings.desktopNotifications, walletStatus])
+
+  useEffect(() => {
+    if (walletStatus !== 'connected') return
+    void refreshNotifications()
+    const timer = window.setInterval(() => { if (!document.hidden) void refreshNotifications() }, 45000)
+    return () => window.clearInterval(timer)
+  }, [refreshNotifications, walletStatus])
 
   const persist = useCallback(async (next: PersistedProfileV1, reason: string) => {
     setProfile(next)
@@ -148,12 +183,19 @@ export default function App() {
 
   const closeWindow = (id: string) => setWindows((current) => current.filter((item) => item.id !== id))
   const minimizeWindow = (id: string) => setWindows((current) => current.map((item) => item.id === id ? { ...item, minimized: true } : item))
-  const maximizeWindow = (id: string) => setWindows((current) => current.map((item) => {
-    if (item.id !== id) return item
-    if (item.maximized && item.restoreBounds) return { ...item, ...item.restoreBounds, restoreBounds: undefined, maximized: false }
-    const restoreBounds: WindowBounds = { x: item.x, y: item.y, width: item.width, height: item.height }
-    return { ...item, x: 8, y: 8, width: window.innerWidth - 16, height: window.innerHeight - 72, restoreBounds, maximized: true }
-  }))
+  const maximizeWindow = (id: string) => setWindows((current) => current.map((item) => item.id === id
+    ? toggleMaximizedWindow(item, { width: window.innerWidth, height: window.innerHeight })
+    : item))
+
+  const snapWindow = (id: string, side: WindowSnap) => setWindows((current) => current.map((item) => item.id === id
+    ? snapWindowState(item, side, { width: window.innerWidth, height: window.innerHeight })
+    : item))
+
+  useEffect(() => {
+    const resize = () => setWindows((current) => current.map((item) => resizeSnappedWindow(item, { width: window.innerWidth, height: window.innerHeight })))
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [])
 
   const updateWindow = (id: string, bounds: Partial<WindowBounds>) => setWindows((current) => current.map((item) => item.id === id ? { ...item, ...bounds } : item))
 
@@ -190,6 +232,25 @@ export default function App() {
   const launcherApps = profile.installedApps.filter((app) => `${app.name} ${app.description} ${app.category}`.toLowerCase().includes(launcherQuery.toLowerCase()))
   const activeMobileApp = profile.installedApps.find((app) => app.id === mobileAppId)
 
+  const openNotification = (notification: MetanetNotification) => {
+    if (!notification.url) return
+    const targetOrigin = new URL(notification.url).origin
+    const app = profile.installedApps.find((candidate) => {
+      if (candidate.launch.kind !== 'iframe') return false
+      try { return new URL(candidate.launch.url).origin === targetOrigin } catch { return false }
+    })
+    if (app) openApp(app.id, notification.url, notification.title)
+    else window.open(notification.url, '_blank', 'noopener,noreferrer')
+    setNotificationsOpen(false)
+  }
+
+  const dismissNotification = async (notification: MetanetNotification) => {
+    try {
+      await metanetNotificationStore.dismiss(notification)
+      setNotifications((current) => current.filter((item) => item.id !== notification.id))
+    } catch { setNotificationsError('This notification could not be dismissed. Please retry.') }
+  }
+
   return <main className={rootClass} style={{ '--wallpaper': `url("${wallpaper.replaceAll('"', '%22')}")` } as React.CSSProperties}>
     {!isMobile ? <div className="desktop-shell" ref={desktopRef} onMouseDown={() => { setLauncherOpen(false); setNotificationsOpen(false) }}>
       <div className="desktop-icons">
@@ -205,25 +266,25 @@ export default function App() {
             position={{ x: windowState.x, y: windowState.y }}
             size={{ width: windowState.width, height: windowState.height }}
             minWidth={app.window.minWidth} minHeight={app.window.minHeight}
-            disableDragging={windowState.maximized} enableResizing={!windowState.maximized}
+            disableDragging={windowState.maximized || Boolean(windowState.snap)} enableResizing={!windowState.maximized && !windowState.snap}
             dragHandleClassName="window-titlebar__drag"
             style={{ zIndex: windowState.zIndex }}
             onMouseDown={() => focusWindow(windowState.id)}
             onDragStop={(_, data) => updateWindow(windowState.id, { x: data.x, y: data.y })}
             onResizeStop={(_, __, element, ___, position) => updateWindow(windowState.id, { ...position, width: element.offsetWidth, height: element.offsetHeight })}
           >
-            <AppWindowFrame app={app} windowState={windowState} profile={profile} onProfileChange={(next, reason) => void persist(next, reason)} onMinimize={() => minimizeWindow(windowState.id)} onMaximize={() => maximizeWindow(windowState.id)} onClose={() => closeWindow(windowState.id)} />
+            <AppWindowFrame app={app} windowState={windowState} profile={profile} onProfileChange={(next, reason) => void persist(next, reason)} onSnapLeft={() => snapWindow(windowState.id, 'left')} onSnapRight={() => snapWindow(windowState.id, 'right')} onMinimize={() => minimizeWindow(windowState.id)} onMaximize={() => maximizeWindow(windowState.id)} onClose={() => closeWindow(windowState.id)} />
           </Rnd>
         })}
       </div>
-      <Taskbar profile={profile} windows={windows} walletStatus={walletStatus} launcherOpen={launcherOpen} notificationsOpen={notificationsOpen} onLauncher={() => setLauncherOpen((value) => !value)} onWindow={focusWindow} onFeedback={() => openApp('feedback')} onHelp={() => openApp('help')} onSettings={() => openApp('settings')} onNotifications={() => setNotificationsOpen((value) => !value)} />
+      <Taskbar profile={profile} windows={windows} walletStatus={walletStatus} launcherOpen={launcherOpen} notificationsOpen={notificationsOpen} notificationCount={notifications.length} onLauncher={() => setLauncherOpen((value) => !value)} onWindow={focusWindow} onBitGenius={() => openApp('bitgenius')} onFeedback={() => openApp('feedback')} onHelp={() => openApp('help')} onSettings={() => openApp('settings')} onNotifications={() => { setNotificationsOpen((value) => !value); void refreshNotifications() }} />
       {launcherOpen && <Launcher apps={launcherApps} query={launcherQuery} onQuery={setLauncherQuery} onOpen={openApp} onAddApp={() => setAddAppOpen(true)} onAddFile={() => setAddFileOpen(true)} />}
-      {notificationsOpen && <NotificationCenter walletStatus={walletStatus} saveMessage={saveMessage} onFeedback={() => openApp('feedback')} />}
-    </div> : <MobileHome profile={profile} activeApp={activeMobileApp} editing={mobileEditing} walletStatus={walletStatus} onEditing={setMobileEditing} onOpen={openApp} onCloseApp={() => setMobileAppId(null)} onProfileChange={(next, reason) => void persist(next, reason)} onMove={(id, direction) => {
+    </div> : <MobileHome profile={profile} activeApp={activeMobileApp} editing={mobileEditing} walletStatus={walletStatus} notificationCount={notifications.length} onEditing={setMobileEditing} onOpen={openApp} onCloseApp={() => setMobileAppId(null)} onProfileChange={(next, reason) => void persist(next, reason)} onMove={(id, direction) => {
       const next = reorderMobileItem(profile, id, direction < 0 ? -1 : 1)
       if (next === profile) return
       void persist(next, 'mobile home order')
-    }} onFeedback={() => openApp('feedback')} onHelp={() => openApp('help')} onSettings={() => openApp('settings')} />}
+    }} onNotifications={() => { setNotificationsOpen((value) => !value); void refreshNotifications() }} onFeedback={() => openApp('feedback')} onHelp={() => openApp('help')} onSettings={() => openApp('settings')} />}
+    {notificationsOpen && <NotificationCenter walletStatus={walletStatus} notifications={notifications} loading={notificationsLoading} error={notificationsError} saveMessage={saveMessage} onRefresh={() => void refreshNotifications()} onOpen={openNotification} onDismiss={(notification) => void dismissNotification(notification)} onClose={() => setNotificationsOpen(false)} onFeedback={() => openApp('feedback')} />}
     {saveRequest && <WalletDialog status={walletStatus} reason={saveRequest.reason} onConnect={() => void connectAndSave()} onDismiss={() => { setSaveRequest(null); if (walletStatus === 'error') setWalletStatus('guest') }} />}
     {addAppOpen && <AddAppDialog onClose={() => setAddAppOpen(false)} onAdd={(app) => { const next = { ...profile, installedApps: [...profile.installedApps, app], desktopItems: [...profile.desktopItems, { id: `desktop-${app.id}`, kind: 'app' as const, targetId: app.id, x: 340, y: 28 }], mobileItems: [...profile.mobileItems, { id: `mobile-${app.id}`, kind: 'app' as const, targetId: app.id, order: profile.mobileItems.length }] }; setAddAppOpen(false); void persist(next, 'installed app') }} />}
     {addFileOpen && <AddFileDialog apps={profile.installedApps} onClose={() => setAddFileOpen(false)} onAdd={(file) => { const next = { ...profile, desktopFiles: [...profile.desktopFiles, file], desktopItems: [...profile.desktopItems, { id: `desktop-file-${file.id}`, kind: 'file' as const, targetId: file.id, x: 448, y: 28 }] }; setAddFileOpen(false); void persist(next, 'Stuff file shortcut') }} />}
@@ -241,11 +302,11 @@ function DesktopIcon({ item, profile, onOpen, onMove, onNudge }: { item: Desktop
   </button>
 }
 
-function AppWindowFrame({ app, windowState, profile, onProfileChange, onMinimize, onMaximize, onClose }: { app: BabbageAppManifestV1; windowState: WindowState; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onMinimize: () => void; onMaximize: () => void; onClose: () => void }) {
+function AppWindowFrame({ app, windowState, profile, onProfileChange, onSnapLeft, onSnapRight, onMinimize, onMaximize, onClose }: { app: BabbageAppManifestV1; windowState: WindowState; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onSnapLeft: () => void; onSnapRight: () => void; onMinimize: () => void; onMaximize: () => void; onClose: () => void }) {
   return <section className="os-window" aria-label={`${windowState.title} window`}>
     <header className="window-titlebar">
       <div className="window-titlebar__drag"><span className={`mini-app-icon app-icon-tile--${app.category}`}><AppIcon name={app.icon} size={17} /></span><strong>{windowState.title}</strong>{app.capabilities.includes('wallet') && <span className="wallet-native"><LockKeyhole size={12} /> Wallet native</span>}</div>
-      <div className="window-actions"><button aria-label="Minimize" onClick={onMinimize}><Minus /></button><button aria-label={windowState.maximized ? 'Restore' : 'Maximize'} onClick={onMaximize}>{windowState.maximized ? <RotateCcw /> : <Maximize2 />}</button><button className="window-close" aria-label="Close" onClick={onClose}><X /></button></div>
+      <div className="window-actions"><button aria-label={windowState.snap === 'left' ? 'Restore from left' : 'Snap left'} title="Snap left" onClick={onSnapLeft}><PanelLeft /></button><button aria-label={windowState.snap === 'right' ? 'Restore from right' : 'Snap right'} title="Snap right" onClick={onSnapRight}><PanelRight /></button><button aria-label="Minimize" onClick={onMinimize}><Minus /></button><button aria-label={windowState.maximized ? 'Restore' : 'Maximize'} onClick={onMaximize}>{windowState.maximized ? <RotateCcw /> : <Maximize2 />}</button><button className="window-close" aria-label="Close" onClick={onClose}><X /></button></div>
     </header>
     <div className="window-content">
       {app.launch.kind === 'iframe' ? <><WalletEnabledFrame title={windowState.title} src={windowState.url ?? app.launch.url} /><a className="external-app-link" href={windowState.url ?? app.launch.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open externally</a></> : <InternalApp appId={app.id} resourceUrl={windowState.url} profile={profile} onProfileChange={onProfileChange} />}
@@ -265,20 +326,29 @@ function WalletEnabledFrame({ title, src, className }: { title: string; src: str
 function InternalApp({ appId, resourceUrl, profile, onProfileChange }: { appId: string; resourceUrl?: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void }) {
   if (appId === 'stuff') return <StuffApp profile={profile} initialResourceUrl={resourceUrl} onProfileChange={onProfileChange} />
   if (appId === 'browser') return <BrowserApp profile={profile} onBrowserChange={(browser) => onProfileChange({ ...profile, browser }, 'browser data')} />
-  if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => onProfileChange({ ...profile, settings }, 'system settings')} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} onRemoveApp={(id) => { const next = removeInstalledApp(profile, id); if (next !== profile) onProfileChange(next, 'removed app') }} />
+  if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => {
+    if (!profile.settings.desktopNotifications && settings.desktopNotifications) {
+      if (!('Notification' in window)) { onProfileChange({ ...profile, settings: { ...settings, desktopNotifications: false } }, 'system settings'); return }
+      void Notification.requestPermission().then((permission) => onProfileChange({ ...profile, settings: { ...settings, desktopNotifications: permission === 'granted' } }, 'system settings'))
+      return
+    }
+    onProfileChange({ ...profile, settings }, 'system settings')
+  }} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} onRemoveApp={(id) => { const next = removeInstalledApp(profile, id); if (next !== profile) onProfileChange(next, 'removed app') }} />
   if (appId === 'help') return <HelpCenter />
   if (appId === 'feedback') return <FeedbackApp />
   return null
 }
 
-function Taskbar({ profile, windows, walletStatus, launcherOpen, notificationsOpen, onLauncher, onWindow, onFeedback, onHelp, onSettings, onNotifications }: { profile: PersistedProfileV1; windows: WindowState[]; walletStatus: WalletStatus; launcherOpen: boolean; notificationsOpen: boolean; onLauncher: () => void; onWindow: (id: string) => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void; onNotifications: () => void }) {
+function Taskbar({ profile, windows, walletStatus, launcherOpen, notificationsOpen, notificationCount, onLauncher, onWindow, onBitGenius, onFeedback, onHelp, onSettings, onNotifications }: { profile: PersistedProfileV1; windows: WindowState[]; walletStatus: WalletStatus; launcherOpen: boolean; notificationsOpen: boolean; notificationCount: number; onLauncher: () => void; onWindow: (id: string) => void; onBitGenius: () => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void; onNotifications: () => void }) {
   return <footer className="taskbar" onMouseDown={(event) => event.stopPropagation()}>
     <button className={launcherOpen ? 'taskbar-launch active' : 'taskbar-launch'} aria-label="Open app launcher" onClick={onLauncher}><Grid3X3 /></button>
     <div className="taskbar-apps">{windows.map((item) => { const app = profile.installedApps.find((candidate) => candidate.id === item.appId); return app ? <button className={!item.minimized && item.zIndex === Math.max(...windows.filter((candidate) => !candidate.minimized).map((candidate) => candidate.zIndex), 0) ? 'active' : ''} key={item.id} title={item.title} onClick={() => onWindow(item.id)}><AppIcon name={app.icon} size={21} /></button> : null })}</div>
     <div className="system-tray">
+      <button title="Open BitGenius agent" aria-label="Open BitGenius agent" onClick={onBitGenius}><Sparkles /></button>
       <button title="Send feedback" onClick={onFeedback}><MessageCircle /></button>
       <button title="Help Center" onClick={onHelp}><CircleHelp /></button>
       <button title="System Settings" onClick={onSettings}><SettingsIcon /></button>
+      <button className={`notification-button ${notificationsOpen ? 'active' : ''}`} title="Metanet notifications" aria-label={`${notificationCount} Metanet notifications`} onClick={onNotifications}><Bell />{notificationCount > 0 && <span>{notificationCount > 99 ? '99+' : notificationCount}</span>}</button>
       <button className={`wallet-indicator wallet-indicator--${walletStatus}`} title={`Wallet: ${walletStatus}`} onClick={onNotifications}><WalletCards /><span>{walletStatus === 'connected' ? 'Connected' : 'Guest'}</span></button>
       <button className={notificationsOpen ? 'tray-clock active' : 'tray-clock'} onClick={onNotifications}><Clock profile={profile} /></button>
     </div>
@@ -294,18 +364,18 @@ function Launcher({ apps, query, onQuery, onOpen, onAddApp, onAddFile }: { apps:
   </section>
 }
 
-function NotificationCenter({ walletStatus, saveMessage, onFeedback }: { walletStatus: WalletStatus; saveMessage: string; onFeedback: () => void }) {
-  return <aside className="notification-center" onMouseDown={(event) => event.stopPropagation()}><header><div><span className="eyebrow">System center</span><h2>All systems ready</h2></div><Wifi /></header><article><span className={`status-dot status-dot--${walletStatus}`} /><div><strong>{walletStatus === 'connected' ? 'Wallet connected' : 'Exploring as a guest'}</strong><p>{walletStatus === 'connected' ? 'Encrypted profile persistence is available.' : 'Apps work now. Saving will ask for Babbage Go.'}</p></div></article>{saveMessage && <article><Cloud /><div><strong>Profile</strong><p>{saveMessage}</p></div></article>}<button className="notification-feedback" onClick={onFeedback}><MessageCircle /> Send Babbage OS feedback</button></aside>
+function NotificationCenter({ walletStatus, notifications, loading, error, saveMessage, onRefresh, onOpen, onDismiss, onClose, onFeedback }: { walletStatus: WalletStatus; notifications: MetanetNotification[]; loading: boolean; error: string; saveMessage: string; onRefresh: () => void; onOpen: (notification: MetanetNotification) => void; onDismiss: (notification: MetanetNotification) => void; onClose: () => void; onFeedback: () => void }) {
+  return <aside className="notification-center" onMouseDown={(event) => event.stopPropagation()}><header><div><span className="eyebrow">Metanet activity</span><h2>Notifications</h2></div><div className="notification-header-actions"><button className="notification-refresh" aria-label="Refresh notifications" disabled={loading || walletStatus !== 'connected'} onClick={onRefresh}><RefreshCw className={loading ? 'spinning' : ''} /></button><button className="notification-refresh" aria-label="Close notifications" onClick={onClose}><X /></button></div></header><article><span className={`status-dot status-dot--${walletStatus}`} /><div><strong>{walletStatus === 'connected' ? 'Wallet connected' : 'Exploring as a guest'}</strong><p>{walletStatus === 'connected' ? 'Messages and incoming payments refresh automatically.' : 'Connect Babbage Go to receive Metanet activity.'}</p></div></article>{error && <p className="notification-error" role="alert">{error}</p>}{notifications.map((notification) => <article className="metanet-notification" key={notification.id}><Bell /><button className="notification-body" disabled={!notification.url} onClick={() => onOpen(notification)}><strong>{notification.title}</strong><p>{notification.body}</p>{notification.receivedAt && <time>{new Date(notification.receivedAt).toLocaleString()}</time>}</button><button className="notification-dismiss" aria-label={`Dismiss ${notification.title}`} onClick={() => onDismiss(notification)}><Check /></button></article>)}{walletStatus === 'connected' && !loading && !notifications.length && !error && <p className="notification-empty">You’re all caught up.</p>}{saveMessage && <article><Cloud /><div><strong>Profile</strong><p>{saveMessage}</p></div></article>}<button className="notification-feedback" onClick={onFeedback}><MessageCircle /> Send Babbage OS feedback</button></aside>
 }
 
-function MobileHome({ profile, activeApp, editing, walletStatus, onEditing, onOpen, onCloseApp, onProfileChange, onMove, onFeedback, onHelp, onSettings }: { profile: PersistedProfileV1; activeApp?: BabbageAppManifestV1; editing: boolean; walletStatus: WalletStatus; onEditing: (value: boolean) => void; onOpen: (id: string) => void; onCloseApp: () => void; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onMove: (id: string, direction: number) => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void }) {
+function MobileHome({ profile, activeApp, editing, walletStatus, notificationCount, onEditing, onOpen, onCloseApp, onProfileChange, onMove, onNotifications, onFeedback, onHelp, onSettings }: { profile: PersistedProfileV1; activeApp?: BabbageAppManifestV1; editing: boolean; walletStatus: WalletStatus; notificationCount: number; onEditing: (value: boolean) => void; onOpen: (id: string) => void; onCloseApp: () => void; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onMove: (id: string, direction: number) => void; onNotifications: () => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void }) {
   const items = [...profile.mobileItems].sort((a, b) => a.order - b.order)
   if (activeApp) return <section className="mobile-app"><header><button onClick={onCloseApp}><ArrowLeft /> Home</button><div><AppIcon name={activeApp.icon} size={19} /><strong>{activeApp.name}</strong></div>{activeApp.launch.kind === 'iframe' ? <a href={activeApp.launch.url} target="_blank" rel="noreferrer"><ExternalLink /></a> : <span />}</header><div>{activeApp.launch.kind === 'iframe' ? <WalletEnabledFrame title={activeApp.name} src={activeApp.launch.url} /> : <InternalApp appId={activeApp.id} profile={profile} onProfileChange={onProfileChange} />}</div></section>
   return <section className="mobile-home">
     <header><div><span className="mobile-logo"><AppWindow /></span><div><span className="eyebrow">Personal computing</span><strong>Babbage OS</strong></div></div><button aria-label={editing ? 'Finish editing mobile home' : 'Edit mobile home'} onClick={() => onEditing(!editing)}>{editing ? 'Done' : <MoreHorizontal />}</button></header>
     <div className="mobile-widget"><div><span className="eyebrow">Your Metanet</span><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}.</h1><p>{walletStatus === 'connected' ? 'Your encrypted workspace is connected.' : 'Explore freely. Connect only when you save.'}</p></div><Clock profile={profile} /></div>
     <div className={editing ? 'mobile-grid editing' : 'mobile-grid'}>{items.map((item, index) => { const app = profile.installedApps.find((candidate) => candidate.id === item.targetId); if (!app) return null; return <div className="mobile-icon-wrap" key={item.id}><button className="mobile-icon" onClick={() => !editing && onOpen(app.id)}><span className={`app-icon-tile app-icon-tile--${app.category}`}><AppIcon name={app.icon} size={30} /></span><span>{app.shortName}</span></button>{editing && <span className="mobile-reorder"><button aria-label={`Move ${app.shortName} earlier`} disabled={index === 0} onClick={() => onMove(item.id, -1)}><ChevronLeft /></button><button aria-label={`Move ${app.shortName} later`} disabled={index === items.length - 1} onClick={() => onMove(item.id, 1)}><ChevronRight /></button></span>}</div>})}</div>
-    <nav className="mobile-dock" aria-label="Favorite apps"><button aria-label="Open Stuff" onClick={() => onOpen('stuff')}><AppIcon name="folder" /></button><button aria-label="Open Convo" onClick={() => onOpen('convo')}><AppIcon name="messages" /></button><button aria-label="Open Browser" onClick={() => onOpen('browser')}><AppIcon name="globe" /></button><button aria-label="Send feedback" onClick={onFeedback}><MessageCircle /></button></nav>
+    <nav className="mobile-dock" aria-label="Favorite apps"><button aria-label="Open Stuff" onClick={() => onOpen('stuff')}><AppIcon name="folder" /></button><button aria-label="Open Convo" onClick={() => onOpen('convo')}><AppIcon name="messages" /></button><button aria-label="Open BitGenius agent" onClick={() => onOpen('bitgenius')}><AppIcon name="sparkles" /></button><button className="mobile-notification-button" aria-label={`${notificationCount} Metanet notifications`} onClick={onNotifications}><Bell />{notificationCount > 0 && <span>{notificationCount}</span>}</button><button aria-label="Send feedback" onClick={onFeedback}><MessageCircle /></button></nav>
     <footer><button onClick={onHelp}><CircleHelp /> Help</button><button onClick={onSettings}><SettingsIcon /> Settings</button><span><WalletCards /> {walletStatus === 'connected' ? 'Connected' : 'Guest'}</span></footer>
   </section>
 }

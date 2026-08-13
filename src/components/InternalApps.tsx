@@ -15,6 +15,18 @@ const normalizeUrl = (value: string) => {
   return url.toString()
 }
 
+const FRAME_RESTRICTED_HOSTS = ['google.com', 'duckduckgo.com', 'metanetapps.com']
+
+export function frameRestrictionReason(value: string): string | undefined {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase()
+    if (FRAME_RESTRICTED_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`))) {
+      return `${hostname} does not permit pages to run inside another site's frame.`
+    }
+  } catch { /* Invalid addresses are handled by normalizeUrl. */ }
+  return undefined
+}
+
 const hostnameForApp = (app: BabbageAppManifestV1) => {
   try { return new URL(app.launch.url).hostname || 'Custom app' } catch { return 'Custom app' }
 }
@@ -31,6 +43,7 @@ export function BrowserApp({ profile, onBrowserChange }: BrowserProps) {
   const [error, setError] = useState('')
   const [credential, setCredential] = useState({ origin: '', username: '', password: '' })
   const [showPasswords, setShowPasswords] = useState(false)
+  const restriction = frameRestrictionReason(url)
 
   const navigate = (event?: FormEvent) => {
     event?.preventDefault()
@@ -67,10 +80,12 @@ export function BrowserApp({ profile, onBrowserChange }: BrowserProps) {
         <input aria-label="Web address" value={address} onChange={(event) => setAddress(event.target.value)} />
         <button type="submit">Go</button>
         <button aria-label="Bookmark page" type="button" onClick={addBookmark}><Star size={18} /></button>
-        <a aria-label="Open externally" href={url} target="_blank" rel="noreferrer"><ExternalLink size={18} /></a>
+        <a aria-label="Open in browser tab" title="Open in browser tab" href={url} target="_blank" rel="noreferrer"><ExternalLink size={18} /><span>Open</span></a>
       </form>
       {error && <p className="inline-error" role="alert">{error}</p>}
-      <BrowserFrame src={url} />
+      {restriction
+        ? <section className="browser-frame-fallback"><ExternalLink /><span className="eyebrow">Open web compatibility</span><h2>This site opens in a browser tab</h2><p>{restriction} Babbage Browser still keeps this visit in your encrypted history.</p><a href={url} target="_blank" rel="noreferrer">Open {new URL(url).hostname} <ExternalLink size={16} /></a></section>
+        : <><div className="browser-compatibility">If a page stays blank, its security policy blocks embedded browsing. <a href={url} target="_blank" rel="noreferrer">Open it in a browser tab</a>.</div><BrowserFrame src={url} /></>}
     </>}
     {tab === 'bookmarks' && <BrowserList empty="No bookmarks yet." items={profile.browser.bookmarks} onOpen={(next) => { setAddress(next); setUrl(next); setTab('web') }} onDelete={(id) => onBrowserChange({ ...profile.browser, bookmarks: profile.browser.bookmarks.filter((item) => item.id !== id) })} />}
     {tab === 'history' && <BrowserList empty="Your encrypted history is empty." items={profile.browser.history} onOpen={(next) => { setAddress(next); setUrl(next); setTab('web') }} onDelete={(id) => onBrowserChange({ ...profile.browser, history: profile.browser.history.filter((item) => item.id !== id) })} />}
@@ -133,6 +148,7 @@ export function SettingsApp({ settings, mobileItems, installedApps, onChange, on
       <label className="toggle"><input type="checkbox" checked={settings.showSeconds} onChange={(event) => update('showSeconds', event.target.checked)} /><span />Show seconds</label>
       <label className="toggle"><input type="checkbox" checked={settings.reduceMotion} onChange={(event) => update('reduceMotion', event.target.checked)} /><span />Reduce motion</label>
     </section>
+    <section><h3>Notifications</h3><p>Metanet messages and payments appear in the system tray while your wallet is connected.</p><label className="toggle"><input type="checkbox" checked={settings.desktopNotifications} onChange={(event) => update('desktopNotifications', event.target.checked)} /><span />Browser alerts for new Metanet activity</label></section>
     <section><h3>Mobile home layout</h3><p>Arrange the phone home screen without moving desktop icons.</p><div className="mobile-layout-settings">{[...mobileItems].sort((a, b) => a.order - b.order).map((item, index, ordered) => { const app = installedApps.find((candidate) => candidate.id === item.targetId); if (!app) return null; return <article key={item.id}><span><strong>{app.name}</strong><small>Position {index + 1}</small></span><span><button aria-label={`Move ${app.name} earlier on mobile`} disabled={index === 0} onClick={() => onMoveMobile(item.id, -1)}>Earlier</button><button aria-label={`Move ${app.name} later on mobile`} disabled={index === ordered.length - 1} onClick={() => onMoveMobile(item.id, 1)}>Later</button></span></article> })}</div></section>
     <section><h3>Installed apps</h3><p>Built-in apps are part of Babbage OS. Apps you add can be removed from both desktop and mobile without affecting app-owned data.</p><div className="installed-app-settings">{installedApps.map((app) => { const builtIn = DEFAULT_APPS.some((candidate) => candidate.id === app.id); return <article key={app.id}><span><strong>{app.name}</strong><small>{builtIn ? 'Built in' : hostnameForApp(app)}</small></span>{builtIn ? <span className="built-in-label">Built in</span> : <button aria-label={`Remove ${app.name}`} onClick={() => onRemoveApp(app.id)}><Trash2 size={16} /> Remove</button>}</article> })}</div></section>
   </div>

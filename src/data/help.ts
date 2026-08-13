@@ -19,15 +19,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: 'permissions', section: 'Getting started', title: 'Grouped permissions and PACT',
     body: [
-      'Babbage OS follows BRC-116. Its first protected profile operation can show one grouped prompt covering the exact LocalKVStore encryption protocol, basket access, and monthly storage spending authorization declared at /manifest.json.',
+      'Babbage OS follows BRC-116. Its first protected operation can show one grouped prompt covering the exact LocalKVStore and Stuff protocols, the MessageBox AuthFetch sub-permission, basket access, and monthly storage spending authorization declared at /manifest.json.',
       'Permissions are isolated by originator. Apps such as Convo, Tempo, or BitGenius therefore use their own domain manifests for AuthFetch, storage, certificates, spending, and other app-specific permissions. Babbage OS must not impersonate them or combine unrelated permissions under the babbageos.com grant.',
-      'PACT is separate from ordinary app permissions. When an app communicates with a new peer through Level 2 protocols, its own BRC-116 counterpartyPermissions declaration lets the wallet present one peer-specific trust prompt. Babbage OS itself does not request PACT because its private profile uses only the self counterparty.'
+      'PACT is separate from ordinary app permissions. When an app communicates with a new peer through Level 2 protocols, its own BRC-116 counterpartyPermissions declaration lets the wallet present one peer-specific trust prompt. Babbage OS itself does not request PACT because its profile, Stuff, and notification feed use only the self counterparty.'
     ]
   },
   {
     id: 'windows', section: 'Desktop', title: 'Windows and the taskbar',
     body: [
-      'Drag a title bar to move a window. Drag an edge or corner to resize. Use the title-bar controls to minimize, maximize, restore, or close. Selecting a window or its taskbar button brings it forward.',
+      'Drag a title bar to move a window. Drag an edge or corner to resize. Use the title-bar controls to snap left, snap right, minimize, maximize, restore, or close. Selecting a window or its taskbar button brings it forward.',
       'The launcher shows every installed app. The tray contains wallet state, feedback, Help Center, settings, and the clock in your selected timezone.'
     ]
   },
@@ -49,8 +49,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: 'browser', section: 'Apps', title: 'Babbage Browser',
     body: [
-      'The Browser app opens HTTPS pages inside a managed OS window when the site permits framing. Use Open externally if a site declines to render in a frame.',
+      'The Browser app opens HTTPS pages inside a managed OS window when the site permits framing. Google, DuckDuckGo, Metanet Apps, and other sites that prohibit iframe embedding get a clear Open in browser tab handoff; any unexpectedly blank page has the same always-visible action.',
       'Bookmarks, history, and credentials are part of your encrypted Local KV Store profile. Credentials are never written to browser localStorage or sent to the opened website by Babbage OS.'
+    ]
+  },
+  {
+    id: 'notifications', section: 'Apps', title: 'Messages, payments, and BitGenius',
+    body: [
+      'The tray notification center retrieves Metanet activity from your wallet-authenticated MessageBox. Incoming payment notifications are accepted through WalletClient, and message links open in the matching installed app when possible.',
+      'Use the BitGenius sparkle in the taskbar or the BitGenius icon in the phone dock to open your agent chat. The embedded app keeps its own origin and reaches Babbage Go through the secure wallet bridge.',
+      'Optional browser alerts can be enabled in System Settings. Babbage OS asks the browser for notification permission only when you turn them on.'
     ]
   },
   {

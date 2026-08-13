@@ -11,7 +11,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   clock24Hour: false,
   accent: 'cyan',
   reduceMotion: false,
-  showSeconds: false
+  showSeconds: false,
+  desktopNotifications: false
 }
 
 export const createDefaultProfile = (): PersistedProfileV1 => ({

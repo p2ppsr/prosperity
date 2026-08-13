@@ -33,9 +33,16 @@ originator-preserving CWI, Cicada, or JSON substrate. App requests remain scoped
 to the app's own hostname; they are never charged to `babbageos.com`.
 
 The root `manifest.json` follows BRC-116 and groups only Babbage OS's own
-encrypted LocalKVStore protocol, basket, and monthly storage authorization.
-AuthFetch, PACT, certificate, or application storage permissions belong in each
-embedded app's manifest because BRC-116 grants are isolated by originator.
+encrypted LocalKVStore and Stuff protocols, baskets, MessageBox AuthFetch
+sub-permission, and monthly storage authorization. MessageBox powers the tray's
+wallet-authenticated Metanet message and incoming-payment feed. PACT,
+certificate, or application storage permissions still belong in each embedded
+app's manifest because BRC-116 grants are isolated by originator.
+
+The window manager supports independent minimize, maximize, restore, left-snap,
+and right-snap states. Babbage Browser keeps encrypted history, bookmarks, and
+credentials in the wallet profile; sites that prohibit iframe embedding receive
+an explicit browser-tab handoff instead of an unexplained blank frame.
 
 Stuff-backed file shortcuts use `BabbageDesktopFileV1`. A shortcut records only
 portable filesystem metadata and its Stuff URL; file contents stay under the

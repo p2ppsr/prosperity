@@ -21,6 +21,7 @@
     "deploy": "cars release now Babbage"
   },
   "dependencies": {
+    "@bsv/message-box-client": "2.4.0",
     "@bsv/sdk": "2.4.0",
     "lucide-react": "^1.31.0",
     "react": "19.2.8",
