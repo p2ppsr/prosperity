@@ -26,7 +26,9 @@ export const createDefaultProfile = (): PersistedProfileV1 => ({
 })
 
 const PROFILE_KEY = 'profile-v1'
-const CONTEXT = 'babbage-os'
+// LocalKVStore uses the context as both a basket and a level-2 BRC-100
+// protocol name. Protocol names allow letters, numbers, and spaces only.
+const CONTEXT = 'babbage os'
 const WALLET_DISCOVERY_TIMEOUT_MS = 2500
 
 function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {

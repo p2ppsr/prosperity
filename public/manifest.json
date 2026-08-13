@@ -27,14 +27,14 @@
       "description": "Encrypt and persist your Babbage OS preferences, independent desktop and mobile layouts, app catalogue, file shortcuts, and private browser data.",
       "protocolPermissions": [
         {
-          "protocolID": [2, "babbage-os"],
+          "protocolID": [2, "babbage os"],
           "counterparty": "self",
           "description": "Encrypt, decrypt, lock, and unlock your private Babbage OS profile."
         }
       ],
       "basketAccess": [
         {
-          "basket": "babbage-os",
+          "basket": "babbage os",
           "description": "Store and retrieve the encrypted Babbage OS profile token."
         }
       ],
@@ -52,14 +52,14 @@
       "description": "Encrypt and persist your Babbage OS profile.",
       "protocolPermissions": [
         {
-          "protocolID": [2, "babbage-os"],
+          "protocolID": [2, "babbage os"],
           "counterparty": "self",
           "description": "Encrypt, decrypt, lock, and unlock your private Babbage OS profile."
         }
       ],
       "basketAccess": [
         {
-          "basket": "babbage-os",
+          "basket": "babbage os",
           "description": "Store and retrieve the encrypted Babbage OS profile token."
         }
       ],
