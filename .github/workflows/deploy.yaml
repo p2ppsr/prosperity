@@ -1,42 +1,66 @@
-name: Deployment
-on:
-  push:
-    branches:
-      - master
-      - production
+name: Verify and deploy Babbage OS
 
-env:
-  CURRENT_BRANCH: ${{ github.ref_name }}
-  GCR_HOST: us.gcr.io
-  GOOGLE_PROJECT_ID: babbage-private
-  GCR_IMAGE_NAME: prosperity
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: babbage-os-cars-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    name: Deploy
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-         ref: ${{ env.CURRENT_BRANCH }}
-         lfs: true
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: CWI_NPM_TOKEN=${{ secrets.CWI_NPM_TOKEN }} npm ci
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
       - run: npm run build
-      - uses: RafikFarhad/push-to-gcr-github-action@v4.1
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARS_REQUEST_TIMEOUT_MS: "300000"
+      VITE_RELEASE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          gcloud_service_key: ${{ secrets.DOCKER_REGISTRY_PUSH_KEY }}
-          registry: ${{ env.GCR_HOST }}
-          project_id: ${{ env.GOOGLE_PROJECT_ID }}
-          image_name: ${{ env.GCR_IMAGE_NAME }}
-          image_tag: ${{ env.CURRENT_BRANCH }}-${{ github.sha }}
-      - uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.gcp_credentials }}
-      - uses: google-github-actions/deploy-cloudrun@v0
-        with:
-          service: ${{ env.GCR_IMAGE_NAME }}-${{ env.CURRENT_BRANCH }}
-          image: "${{ env.GCR_HOST }}/${{ env.GOOGLE_PROJECT_ID }}/${{ env.GCR_IMAGE_NAME }}:${{ env.CURRENT_BRANCH }}-${{ github.sha }}"
-          timeout: 3540
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify CARS identity and project balance
+        env:
+          CARS_PRIVATE_KEY: ${{ secrets.CARS_PRIVATE_KEY }}
+          CARS_WALLET_STORAGE: ${{ secrets.CARS_WALLET_STORAGE }}
+        run: |
+          set -euo pipefail
+          test -n "${CARS_PRIVATE_KEY:-}" || { echo "CARS_PRIVATE_KEY is required" >&2; exit 1; }
+          storage_args=()
+          if [ -n "${CARS_WALLET_STORAGE:-}" ]; then storage_args=(--storage "$CARS_WALLET_STORAGE"); fi
+          npx cars doctor Babbage --key "$CARS_PRIVATE_KEY" --network mainnet "${storage_args[@]}"
+          npx cars project ensure-balance Babbage --key "$CARS_PRIVATE_KEY" --network mainnet "${storage_args[@]}" --min 1 --topup-to 235000
+      - name: Release to CARS
+        env:
+          CARS_PRIVATE_KEY: ${{ secrets.CARS_PRIVATE_KEY }}
+          CARS_WALLET_STORAGE: ${{ secrets.CARS_WALLET_STORAGE }}
+        run: |
+          set -euo pipefail
+          storage_args=()
+          if [ -n "${CARS_WALLET_STORAGE:-}" ]; then storage_args=(--storage "$CARS_WALLET_STORAGE"); fi
+          npx cars release now Babbage --key "$CARS_PRIVATE_KEY" --network mainnet "${storage_args[@]}" 2>&1 | tee cars-release.log
+          grep -q "CARS_RELEASE_SUCCESS" cars-release.log
