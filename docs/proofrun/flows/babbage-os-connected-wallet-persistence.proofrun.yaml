@@ -20,7 +20,7 @@ environment:
     releaseSource: master
 safety:
   stateChanging: true
-  spendCap: { amount: 1000, unit: sats }
+  spendCap: { amount: 10000, unit: sats }
   testIdentities:
     - { purpose: user, source: "Operator-provided Babbage Go test profile; never record keys." }
   cleanup: { required: true, instructions: Restore the original theme and remove test bookmark, credential, app, and Stuff shortcut. }
@@ -35,7 +35,7 @@ matrix:
 preflight:
   commands:
     - { description: Verify production HTML, command: "curl -fsS https://babbageos.com/", cwd: /Users/tyeverett/projects/network-ops }
-  requiredState: [Babbage Go is installed, unlocked, and available to WalletClient., Wallet-backed LocalKV updates remain below the 1000-satoshi ProofRun cap.]
+  requiredState: [Babbage Go is installed, unlocked, and available to WalletClient., The BRC-116 manifest and wallet permission cap wallet-backed LocalKV updates at 10000 satoshis for the month.]
 flow:
   steps:
     - id: connect
