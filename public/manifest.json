@@ -1,0 +1,74 @@
+{
+  "name": "Babbage OS",
+  "short_name": "Babbage OS",
+  "description": "A BRC-100 native personal computing environment with a modern desktop, mobile home screen, wallet-persisted preferences, files, communication, productivity, and web apps.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#071324",
+  "theme_color": "#071324",
+  "categories": ["productivity", "utilities", "social"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "metanet": {
+    "schemaVersion": 1,
+    "brcs": ["BRC-100", "BRC-73", "BRC-116"],
+    "repositoryUrl": "https://github.com/p2ppsr/prosperity",
+    "supportUrl": "https://usercom.babbage.systems/",
+    "groupPermissions": {
+      "description": "Encrypt and persist your Babbage OS preferences, independent desktop and mobile layouts, app catalogue, file shortcuts, and private browser data.",
+      "protocolPermissions": [
+        {
+          "protocolID": [2, "babbage-os"],
+          "counterparty": "self",
+          "description": "Encrypt, decrypt, lock, and unlock your private Babbage OS profile."
+        }
+      ],
+      "basketAccess": [
+        {
+          "basket": "babbage-os",
+          "description": "Store and retrieve the encrypted Babbage OS profile token."
+        }
+      ],
+      "spendingAuthorization": {
+        "amount": 10000,
+        "duration": 2592000,
+        "description": "Create and update encrypted Babbage OS profile tokens for one month."
+      },
+      "certificateAccess": []
+    }
+  },
+  "babbage": {
+    "schemaVersion": 1,
+    "groupPermissions": {
+      "description": "Encrypt and persist your Babbage OS profile.",
+      "protocolPermissions": [
+        {
+          "protocolID": [2, "babbage-os"],
+          "counterparty": "self",
+          "description": "Encrypt, decrypt, lock, and unlock your private Babbage OS profile."
+        }
+      ],
+      "basketAccess": [
+        {
+          "basket": "babbage-os",
+          "description": "Store and retrieve the encrypted Babbage OS profile token."
+        }
+      ],
+      "spendingAuthorization": {
+        "amount": 10000,
+        "duration": 2592000,
+        "description": "Create and update encrypted Babbage OS profile tokens for one month."
+      },
+      "certificateAccess": []
+    }
+  }
+}

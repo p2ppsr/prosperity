@@ -22,7 +22,6 @@
   },
   "dependencies": {
     "@bsv/sdk": "2.4.0",
-    "babbage-kvstore": "2.0.1",
     "lucide-react": "^0.541.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
