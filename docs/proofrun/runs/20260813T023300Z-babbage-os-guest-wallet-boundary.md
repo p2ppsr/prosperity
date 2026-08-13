@@ -1,8 +1,10 @@
 # ProofRun Record: Babbage OS / guest wallet boundary
 
 - ProofRun version: `1`
-- Flow: `docs/proofrun/flows/babbage-os-guest-wallet-boundary.proofrun.yaml`
+- Flow definition: `docs/proofrun/flows/babbage-os-guest-wallet-boundary.proofrun.yaml`
 - Run ID: `20260813T023300Z-babbage-os-guest-wallet-boundary`
+- Started at: `2026-08-13T02:28:00Z`
+- Completed at: `2026-08-13T02:33:00Z`
 - Outcome: `pass`
 - Environment: production, `https://babbageos.com`
 - Operator: AI agent
