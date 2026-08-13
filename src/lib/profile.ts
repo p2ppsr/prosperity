@@ -20,7 +20,7 @@ export const createDefaultProfile = (): PersistedProfileV1 => ({
   settings: { ...DEFAULT_SETTINGS },
   desktopItems: getDefaultDesktopItems(),
   mobileItems: getDefaultMobileItems(),
-  installedApps: DEFAULT_APPS,
+  installedApps: [...DEFAULT_APPS],
   desktopFiles: [],
   browser: { bookmarks: [], history: [], credentials: [] }
 })
@@ -68,6 +68,19 @@ export const normalizeProfile = (value: unknown): PersistedProfileV1 | undefined
       history: Array.isArray(browser.history) ? browser.history as PersistedProfileV1['browser']['history'] : [],
       credentials: Array.isArray(browser.credentials) ? browser.credentials as PersistedProfileV1['browser']['credentials'] : []
     }
+  }
+}
+
+export const removeInstalledApp = (profile: PersistedProfileV1, id: string): PersistedProfileV1 => {
+  if (DEFAULT_APPS.some((app) => app.id === id) || !profile.installedApps.some((app) => app.id === id)) return profile
+  return {
+    ...profile,
+    installedApps: profile.installedApps.filter((app) => app.id !== id),
+    desktopItems: profile.desktopItems.filter((item) => !(item.kind === 'app' && item.targetId === id)),
+    mobileItems: profile.mobileItems
+      .filter((item) => !(item.kind === 'app' && item.targetId === id))
+      .sort((a, b) => a.order - b.order)
+      .map((item, order) => ({ ...item, order }))
   }
 }
 

@@ -13,7 +13,7 @@ import { DEFAULT_APPS } from './data/apps'
 import { resolveFileApp } from './lib/fileAssociations'
 import { EMBEDDED_APP_PERMISSIONS, frameWalletBridge } from './lib/frameWalletBridge'
 import { nudgeDesktopItem, positionDesktopItem, reorderMobileItem } from './lib/layout'
-import { createDefaultProfile, walletInstallUrl, walletProfileStore } from './lib/profile'
+import { createDefaultProfile, removeInstalledApp, walletInstallUrl, walletProfileStore } from './lib/profile'
 import type {
   BabbageAppManifestV1, BabbageDesktopFileV1, DesktopItem, MobileItem,
   PersistedProfileV1, WindowBounds, WindowState
@@ -265,7 +265,7 @@ function WalletEnabledFrame({ title, src, className }: { title: string; src: str
 function InternalApp({ appId, resourceUrl, profile, onProfileChange }: { appId: string; resourceUrl?: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void }) {
   if (appId === 'stuff') return <StuffApp profile={profile} initialResourceUrl={resourceUrl} onProfileChange={onProfileChange} />
   if (appId === 'browser') return <BrowserApp profile={profile} onBrowserChange={(browser) => onProfileChange({ ...profile, browser }, 'browser data')} />
-  if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => onProfileChange({ ...profile, settings }, 'system settings')} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} />
+  if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => onProfileChange({ ...profile, settings }, 'system settings')} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} onRemoveApp={(id) => { const next = removeInstalledApp(profile, id); if (next !== profile) onProfileChange(next, 'removed app') }} />
   if (appId === 'help') return <HelpCenter />
   if (appId === 'feedback') return <FeedbackApp />
   return null

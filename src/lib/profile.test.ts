@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_APPS } from '../data/apps'
-import { createDefaultProfile, normalizeProfile } from './profile'
+import { createDefaultProfile, normalizeProfile, removeInstalledApp } from './profile'
 
 describe('wallet profile normalization', () => {
   it('rejects unknown profile schemas', () => {
@@ -40,5 +40,21 @@ describe('wallet profile normalization', () => {
     })!
     expect(() => new Intl.DateTimeFormat(undefined, { timeZone: normalized.settings.timezone })).not.toThrow()
     expect(normalized.browser).toEqual({ bookmarks: [], history: [], credentials: [] })
+  })
+
+  it('removes a custom app and both layout entries while protecting built-ins', () => {
+    const profile = createDefaultProfile()
+    const custom = { ...profile.installedApps[1], id: 'custom-example', name: 'Example' }
+    profile.installedApps.push(custom)
+    profile.desktopItems.push({ id: 'desktop-custom-example', kind: 'app', targetId: custom.id, x: 200, y: 100 })
+    profile.mobileItems.push({ id: 'mobile-custom-example', kind: 'app', targetId: custom.id, order: profile.mobileItems.length })
+
+    const next = removeInstalledApp(profile, custom.id)
+
+    expect(next.installedApps.some((app) => app.id === custom.id)).toBe(false)
+    expect(next.desktopItems.some((item) => item.targetId === custom.id)).toBe(false)
+    expect(next.mobileItems.some((item) => item.targetId === custom.id)).toBe(false)
+    expect(next.mobileItems.map((item) => item.order)).toEqual(next.mobileItems.map((_, index) => index))
+    expect(removeInstalledApp(next, 'stuff')).toBe(next)
   })
 })

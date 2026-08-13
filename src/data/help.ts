@@ -57,7 +57,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'apps', section: 'Apps', title: 'Installing an app',
     body: [
       'Open the launcher and choose Add app. Provide a name and HTTPS launch URL. The app is installed into your wallet-backed profile and appears on both desktop and mobile home screens.',
-      'BabbageAppManifestV1 is the portable integration contract. It defines identity, launch kind, category, capabilities, window preferences, and optional file associations.'
+      'BabbageAppManifestV1 is the portable integration contract. It defines identity, launch kind, category, capabilities, window preferences, and optional file associations.',
+      'To uninstall an app you added, open System Settings and use Remove in Installed apps. Babbage OS removes its desktop and phone shortcuts without deleting data owned by the app.'
     ]
   },
   {
