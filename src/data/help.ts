@@ -43,7 +43,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'files', section: 'Files', title: 'Stuff files on your desktop',
     body: [
       'Stuff is the filesystem and default file explorer. A desktop file shortcut stores a portable Stuff URL plus safe metadata—not a second copy of file contents.',
-      'Open a file in Stuff and choose Add to desktop. Babbage OS records the BabbageDesktopFileV1 shortcut, chooses an installed app by exact MIME type or extension, and falls back to Stuff.'
+      'Open a file in Stuff and choose Add to desktop. Babbage OS records the BabbageDesktopFileV1 shortcut, chooses an installed app by exact MIME type or extension, and falls back to Stuff. Open it again and choose Remove from desktop to remove only the shortcut; deleting a Stuff file also removes its desktop shortcut automatically.'
     ]
   },
   {

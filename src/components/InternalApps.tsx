@@ -242,6 +242,13 @@ export function StuffApp({ profile, initialResourceUrl, onProfileChange }: {
       const next = { ...node, nodes: node.nodes.filter((item) => item.id !== entry.id) }
       await stuffFilesystemStore.set(currentId, next)
       await stuffFilesystemStore.remove(entry.id)
+      if (entry.type === 'file' && profile.desktopItems.some((item) => item.kind === 'file' && item.targetId === entry.id)) {
+        onProfileChange({
+          ...profile,
+          desktopFiles: profile.desktopFiles.filter((item) => item.id !== entry.id),
+          desktopItems: profile.desktopItems.filter((item) => !(item.kind === 'file' && item.targetId === entry.id))
+        }, 'Remove deleted Stuff file shortcut')
+      }
       setNode(next); setStatus(`${entry.name} deleted.`)
     })
   }
@@ -265,8 +272,19 @@ export function StuffApp({ profile, initialResourceUrl, onProfileChange }: {
     })
   }
 
-  const addToDesktop = () => {
+  const isOnDesktop = profile.desktopItems.some((item) => item.kind === 'file' && item.targetId === currentId)
+
+  const toggleDesktopShortcut = () => {
     if (node.type !== 'file') return
+    if (isOnDesktop) {
+      onProfileChange({
+        ...profile,
+        desktopFiles: profile.desktopFiles.filter((item) => item.id !== currentId),
+        desktopItems: profile.desktopItems.filter((item) => !(item.kind === 'file' && item.targetId === currentId))
+      }, 'Remove Stuff file shortcut')
+      setStatus('Removed from your Babbage OS desktop. The file remains safely in Stuff.')
+      return
+    }
     const file = {
       schema: 'babbage-os-desktop-file' as const, schemaVersion: '1.0' as const,
       id: currentId, name: currentName, stuffUrl: stuffUrlForNode(currentId),
@@ -285,7 +303,7 @@ export function StuffApp({ profile, initialResourceUrl, onProfileChange }: {
   if (loading) return <div className="empty-state"><span className="loading-orbit" /><h2>Opening Stuff…</h2><p>Approve the grouped Babbage OS storage request in your wallet if asked.</p></div>
 
   return <div className="stuff-app">
-    <header className="stuff-toolbar"><button aria-label="Back" disabled={path.length <= 1} onClick={goBack}><ArrowLeft /></button><div><span className="eyebrow">Encrypted Stuff filesystem</span><strong>{path.map((item) => item.name).join(' / ')}</strong></div>{node.type === 'folder' ? <><button onClick={() => createEntry('folder')} disabled={busy}><FolderPlus /> New folder</button><button onClick={() => createEntry('file')} disabled={busy}><Plus /> New file</button></> : <><button onClick={addToDesktop}><ExternalLink /> Add to desktop</button><button onClick={saveFile} disabled={busy}><Save /> Save</button></>}</header>
+    <header className="stuff-toolbar"><button aria-label="Back" disabled={path.length <= 1} onClick={goBack}><ArrowLeft /></button><div><span className="eyebrow">Encrypted Stuff filesystem</span><strong>{path.map((item) => item.name).join(' / ')}</strong></div>{node.type === 'folder' ? <><button onClick={() => createEntry('folder')} disabled={busy}><FolderPlus /> New folder</button><button onClick={() => createEntry('file')} disabled={busy}><Plus /> New file</button></> : <><button onClick={toggleDesktopShortcut}><ExternalLink /> {isOnDesktop ? 'Remove from desktop' : 'Add to desktop'}</button><button onClick={saveFile} disabled={busy}><Save /> Save</button></>}</header>
     {needsWallet && <section className="stuff-wallet-callout"><WalletCards /><div><strong>Connect to save in Stuff</strong><p>Your files are encrypted and stored through WalletClient. Stuff has no embedded wallet.</p></div><button onClick={() => void connect()} disabled={busy}>{busy ? 'Waiting…' : 'Connect Babbage Go'}</button></section>}
     {status && <p className="stuff-status" role="status">{status}</p>}
     {node.type === 'folder' ? <div className="stuff-grid">{node.nodes.length ? node.nodes.map((entry) => <article key={entry.id}><button className="stuff-entry" onClick={() => openEntry(entry)}><span>{entry.type === 'folder' ? <Folder /> : <FileText />}</span><strong>{entry.name}</strong><small>{entry.type === 'folder' ? 'Folder' : entry.mimeType}</small></button><div><button aria-label={`Rename ${entry.name}`} onClick={() => renameEntry(entry)}><Pencil /></button><button aria-label={`Delete ${entry.name}`} onClick={() => deleteEntry(entry)}><Trash2 /></button></div></article>) : <div className="empty-state"><Folder /><h2>{needsWallet ? 'Your files appear after you connect.' : 'This folder is empty.'}</h2><p>Create a folder or file to get started.</p></div>}</div> : <div className="stuff-editor"><label><span>{currentName}</span><textarea aria-label="File contents" value={node.contents} onChange={(event) => setNode({ ...node, contents: event.target.value })} /></label></div>}
