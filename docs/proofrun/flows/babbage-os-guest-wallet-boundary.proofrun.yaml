@@ -1,0 +1,84 @@
+proofrunVersion: 1
+id: babbage-os-guest-wallet-boundary
+name: Guest exploration, wallet boundary, and feedback
+surface:
+  repo: p2ppsr/prosperity
+  workspace: /Users/tyeverett/projects/prosperity
+  dossier: docs/repos/p2ppsr/prosperity.md
+  category: onboard
+  audience: People exploring Babbage OS with or without Babbage Go installed.
+environment:
+  kind: production
+  baseUrl: https://babbageos.com
+  healthEndpoints:
+    - https://babbageos.com/
+  deployment:
+    system: cars
+    workflow: Verify and deploy Babbage OS
+    namespace: cars-project-a722566348144abe23e2bd7342f3a425
+    workload: deployment/cars-project-a722566348144abe23e2bd73-deployment
+    releaseSource: master
+safety:
+  stateChanging: true
+  spendCap: { amount: 0, unit: sats }
+  testIdentities: []
+  cleanup: { required: false, instructions: "Feedback probes identify themselves as production readiness probes." }
+matrix:
+  desktopBrowsers: [chrome]
+  mobileBrowsers: []
+  mobileSimulators: []
+  desktopWallets: [wallet-absent]
+  mobileWallets: []
+  serverWallets: []
+  networks: [mainnet]
+preflight:
+  commands:
+    - { description: Verify production HTML, command: "curl -fsS https://babbageos.com/", cwd: /Users/tyeverett/projects/network-ops }
+    - { description: Verify CARS rollout, command: "scripts/ops/kubectl.sh -n cars-project-a722566348144abe23e2bd7342f3a425 rollout status deployment/cars-project-a722566348144abe23e2bd73-deployment", cwd: /Users/tyeverett/projects/network-ops }
+  requiredState:
+    - Production serves a valid certificate and Babbage OS HTML.
+    - Spend cap is zero.
+flow:
+  steps:
+    - id: explore-desktop
+      actor: guest
+      action: Open the desktop and launch built-in surfaces without a wallet.
+      expected: { ui: [Nine default desktop icons and the taskbar render without overflow.] }
+    - id: request-persistence
+      actor: guest
+      action: Change System Settings while no wallet is available.
+      expected: { ui: [A bounded WalletClient check opens the Babbage Go/get-a-wallet dialog within five seconds.] }
+    - id: mobile-home
+      actor: guest
+      action: Render the production surface at 390x844.
+      expected: { ui: [The independent mobile home screen fits without horizontal overflow.] }
+    - id: submit-feedback
+      actor: guest
+      action: Send a clearly labeled production readiness probe from the system tray.
+      expected: { ui: [A success confirmation is shown.], domain: [UserCom accepts the feedback payload without wallet identity.] }
+assertions:
+  uiAppearance: [Desktop and phone layouts have no horizontal overflow or overlapping controls.]
+  audienceIntuition: [Guest mode and the wallet boundary are explained before connection.]
+  customerTrust: [The dialog states what is saved and that keys stay with the external wallet.]
+  flowSuccess: [Wallet absence never blocks exploration and save intent is preserved for connection.]
+  telemetryObservability: [Feedback success is visible to the user.]
+  reliabilityRepeatability: [Reloading restores the default guest surface.]
+  performance: [Wallet absence is resolved to an actionable dialog within five seconds.]
+evidence:
+  publicSafe: [Run record in docs/proofrun/runs/.]
+  privateArtifacts: [network-ops/artifacts/proofrun/p2ppsr/prosperity/]
+telemetry:
+  expectedEvents:
+    - { name: feedback.submitted, required: true }
+  queryInstructions: Inspect UserCom production logs by source=babbage-os without exposing submitted content.
+performanceThresholds:
+  firstMeaningfulContentMs: 2000
+  uiFeedbackAfterActionMs: 500
+  walletPromptShownMs: 5000
+  approvalToConfirmationMs: 10000
+  fullFlowMs: 45000
+  telemetryVisibleMs: 60000
+recording:
+  productRunPath: docs/proofrun/runs/<YYYYMMDDTHHMMSSZ>-babbage-os-guest-wallet-boundary.md
+  updateDossier: true
+  updateReadinessRegistry: true
