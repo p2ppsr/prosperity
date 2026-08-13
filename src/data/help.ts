@@ -12,7 +12,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'wallet', section: 'Getting started', title: 'Wallets and guest mode',
     body: [
       'Guest mode can launch apps and lets you explore every OS surface. Babbage OS asks for Babbage Go only when you save a preference, layout, bookmark, credential, installed app, or desktop file.',
-      'Babbage OS uses the standard WalletClient bridge. It never embeds a private key, recovery phrase, or wallet implementation.'
+      'Babbage OS uses the standard WalletClient bridge. It never embeds a private key, recovery phrase, or wallet implementation.',
+      'Embedded apps can discover wallets through localhost, injected CWI, Cicada, secure JSON, JSON API, React Native, or XDM substrates. Babbage OS delegates loopback access and relays nested XDM requests only from the registered app frame while preserving that app domain as the originator.'
+    ]
+  },
+  {
+    id: 'permissions', section: 'Getting started', title: 'Grouped permissions and PACT',
+    body: [
+      'Babbage OS follows BRC-116. Its first protected profile operation can show one grouped prompt covering the exact LocalKVStore encryption protocol, basket access, and monthly storage spending authorization declared at /manifest.json.',
+      'Permissions are isolated by originator. Apps such as Convo, Tempo, or BitGenius therefore use their own domain manifests for AuthFetch, storage, certificates, spending, and other app-specific permissions. Babbage OS must not impersonate them or combine unrelated permissions under the babbageos.com grant.',
+      'PACT is separate from ordinary app permissions. When an app communicates with a new peer through Level 2 protocols, its own BRC-116 counterpartyPermissions declaration lets the wallet present one peer-specific trust prompt. Babbage OS itself does not request PACT because its private profile uses only the self counterparty.'
     ]
   },
   {
@@ -34,7 +43,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'files', section: 'Files', title: 'Stuff files on your desktop',
     body: [
       'Stuff is the filesystem and default file explorer. A desktop file shortcut stores a portable Stuff URL plus safe metadata—not a second copy of file contents.',
-      'Stuff can send a babbage-os:add-desktop-file message using the BabbageDesktopFileV1 contract. You can also add a Stuff URL from the launcher. Babbage OS chooses an installed app by MIME type or extension and falls back to Stuff.'
+      'Open a file in Stuff and choose Add to desktop. Babbage OS records the BabbageDesktopFileV1 shortcut, chooses an installed app by exact MIME type or extension, and falls back to Stuff.'
     ]
   },
   {
@@ -47,7 +56,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: 'apps', section: 'Apps', title: 'Installing an app',
     body: [
-      'Open the launcher and choose Add app. Provide a name and HTTPS launch URL. The app is installed only into your wallet-backed profile.',
+      'Open the launcher and choose Add app. Provide a name and HTTPS launch URL. The app is installed into your wallet-backed profile and appears on both desktop and mobile home screens.',
       'BabbageAppManifestV1 is the portable integration contract. It defines identity, launch kind, category, capabilities, window preferences, and optional file associations.'
     ]
   },
@@ -62,14 +71,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'privacy', section: 'Safety', title: 'Privacy and security model',
     body: [
       'Babbage OS delegates all identity, signing, encryption, and transaction consent to WalletClient. It does not receive wallet private keys.',
-      'Apps run in sandboxed iframes with forms, scripts, downloads, popups, and same-origin access limited to their own origin. Babbage OS accepts structured file messages only from the configured Stuff origin.'
+      'Apps run in sandboxed iframes with forms, scripts, downloads, popups, and same-origin access limited to their own origin. Local and loopback network access is explicitly delegated so WalletClient can reach a wallet running on the user’s machine. Nested wallet messages are accepted only from the registered frame and exact launch origin.'
     ]
   },
   {
     id: 'recovery', section: 'Safety', title: 'If an app or save does not work',
     body: [
       'Check the tray wallet indicator, unlock Babbage Go, and retry. If an embedded page stays blank, use Open externally from its window.',
-      'A failed wallet save leaves the current in-memory session intact. Nothing is silently persisted in unencrypted browser storage.'
+      'A failed wallet save leaves the current in-memory session intact. Nothing is silently persisted in unencrypted browser storage. If an app cannot see the wallet inside its window, use Open externally and send feedback so the app origin and substrate can be checked.'
     ]
   },
   {

@@ -8,9 +8,10 @@ import {
 } from 'lucide-react'
 
 import { AppIcon } from './components/AppIcon'
-import { BrowserApp, FeedbackApp, HelpCenter, SettingsApp } from './components/InternalApps'
+import { BrowserApp, FeedbackApp, HelpCenter, SettingsApp, StuffApp } from './components/InternalApps'
 import { DEFAULT_APPS } from './data/apps'
 import { resolveFileApp } from './lib/fileAssociations'
+import { EMBEDDED_APP_PERMISSIONS, frameWalletBridge } from './lib/frameWalletBridge'
 import { nudgeDesktopItem, positionDesktopItem, reorderMobileItem } from './lib/layout'
 import { createDefaultProfile, walletInstallUrl, walletProfileStore } from './lib/profile'
 import type {
@@ -21,10 +22,13 @@ import type {
 type WalletStatus = 'checking' | 'guest' | 'connecting' | 'connected' | 'error'
 type SaveRequest = { profile: PersistedProfileV1; reason: string }
 
-const STUFF_ORIGIN = 'https://frontend.8269defdfbae9c6d217aa158ae29e9be.projects.babbage.systems'
-
 function useMobile() {
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches)
+  useEffect(() => {
+    frameWalletBridge.start()
+    return () => frameWalletBridge.stop()
+  }, [])
+
   useEffect(() => {
     const query = window.matchMedia('(max-width: 720px)')
     const update = () => setMobile(query.matches)
@@ -177,30 +181,6 @@ export default function App() {
     }
   }
 
-  useEffect(() => {
-    const receiveStuffFile = (event: MessageEvent) => {
-      if (event.origin !== STUFF_ORIGIN || event.data?.type !== 'babbage-os:add-desktop-file') return
-      const candidate = event.data.file as Partial<BabbageDesktopFileV1>
-      if (!candidate.name || !candidate.stuffUrl || !candidate.mimeType) return
-      let url: URL
-      try { url = new URL(candidate.stuffUrl) } catch { return }
-      if (url.protocol !== 'https:') return
-      const file: BabbageDesktopFileV1 = {
-        schema: 'babbage-os-desktop-file', schemaVersion: '1.0', id: candidate.id || crypto.randomUUID(),
-        name: candidate.name.slice(0, 180), stuffUrl: url.toString(), mimeType: candidate.mimeType.slice(0, 120),
-        extension: candidate.extension?.slice(0, 24), preferredAppId: candidate.preferredAppId, createdAt: candidate.createdAt || new Date().toISOString()
-      }
-      const next = {
-        ...profile,
-        desktopFiles: [...profile.desktopFiles.filter((item) => item.id !== file.id), file],
-        desktopItems: [...profile.desktopItems.filter((item) => item.targetId !== file.id), { id: `desktop-file-${file.id}`, kind: 'file' as const, targetId: file.id, x: 236, y: 28 }]
-      }
-      void persist(next, 'Stuff file shortcut')
-    }
-    window.addEventListener('message', receiveStuffFile)
-    return () => window.removeEventListener('message', receiveStuffFile)
-  }, [persist, profile])
-
   const systemTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
   const resolvedTheme = profile.settings.theme === 'system' ? systemTheme : profile.settings.theme
   const wallpaper = profile.settings.wallpaper === 'custom' && profile.settings.customWallpaperUrl
@@ -268,12 +248,22 @@ function AppWindowFrame({ app, windowState, profile, onProfileChange, onMinimize
       <div className="window-actions"><button aria-label="Minimize" onClick={onMinimize}><Minus /></button><button aria-label={windowState.maximized ? 'Restore' : 'Maximize'} onClick={onMaximize}>{windowState.maximized ? <RotateCcw /> : <Maximize2 />}</button><button className="window-close" aria-label="Close" onClick={onClose}><X /></button></div>
     </header>
     <div className="window-content">
-      {app.launch.kind === 'iframe' ? <><iframe title={windowState.title} src={windowState.url ?? app.launch.url} sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads allow-modals" allow="clipboard-read; clipboard-write; camera; microphone; fullscreen" /><a className="external-app-link" href={windowState.url ?? app.launch.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open externally</a></> : <InternalApp appId={app.id} profile={profile} onProfileChange={onProfileChange} />}
+      {app.launch.kind === 'iframe' ? <><WalletEnabledFrame title={windowState.title} src={windowState.url ?? app.launch.url} /><a className="external-app-link" href={windowState.url ?? app.launch.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open externally</a></> : <InternalApp appId={app.id} resourceUrl={windowState.url} profile={profile} onProfileChange={onProfileChange} />}
     </div>
   </section>
 }
 
-function InternalApp({ appId, profile, onProfileChange }: { appId: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void }) {
+function WalletEnabledFrame({ title, src, className }: { title: string; src: string; className?: string }) {
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  useEffect(() => {
+    if (!frameRef.current) return
+    return frameWalletBridge.registerFrame(frameRef.current, src)
+  }, [src])
+  return <iframe ref={frameRef} className={className} title={title} src={src} sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads allow-modals" allow={EMBEDDED_APP_PERMISSIONS} />
+}
+
+function InternalApp({ appId, resourceUrl, profile, onProfileChange }: { appId: string; resourceUrl?: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void }) {
+  if (appId === 'stuff') return <StuffApp profile={profile} initialResourceUrl={resourceUrl} onProfileChange={onProfileChange} />
   if (appId === 'browser') return <BrowserApp profile={profile} onBrowserChange={(browser) => onProfileChange({ ...profile, browser }, 'browser data')} />
   if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => onProfileChange({ ...profile, settings }, 'system settings')} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} />
   if (appId === 'help') return <HelpCenter />
@@ -310,7 +300,7 @@ function NotificationCenter({ walletStatus, saveMessage, onFeedback }: { walletS
 
 function MobileHome({ profile, activeApp, editing, walletStatus, onEditing, onOpen, onCloseApp, onProfileChange, onMove, onFeedback, onHelp, onSettings }: { profile: PersistedProfileV1; activeApp?: BabbageAppManifestV1; editing: boolean; walletStatus: WalletStatus; onEditing: (value: boolean) => void; onOpen: (id: string) => void; onCloseApp: () => void; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onMove: (id: string, direction: number) => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void }) {
   const items = [...profile.mobileItems].sort((a, b) => a.order - b.order)
-  if (activeApp) return <section className="mobile-app"><header><button onClick={onCloseApp}><ArrowLeft /> Home</button><div><AppIcon name={activeApp.icon} size={19} /><strong>{activeApp.name}</strong></div>{activeApp.launch.kind === 'iframe' ? <a href={activeApp.launch.url} target="_blank" rel="noreferrer"><ExternalLink /></a> : <span />}</header><div>{activeApp.launch.kind === 'iframe' ? <iframe title={activeApp.name} src={activeApp.launch.url} sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads allow-modals" allow="clipboard-read; clipboard-write; camera; microphone; fullscreen" /> : <InternalApp appId={activeApp.id} profile={profile} onProfileChange={onProfileChange} />}</div></section>
+  if (activeApp) return <section className="mobile-app"><header><button onClick={onCloseApp}><ArrowLeft /> Home</button><div><AppIcon name={activeApp.icon} size={19} /><strong>{activeApp.name}</strong></div>{activeApp.launch.kind === 'iframe' ? <a href={activeApp.launch.url} target="_blank" rel="noreferrer"><ExternalLink /></a> : <span />}</header><div>{activeApp.launch.kind === 'iframe' ? <WalletEnabledFrame title={activeApp.name} src={activeApp.launch.url} /> : <InternalApp appId={activeApp.id} profile={profile} onProfileChange={onProfileChange} />}</div></section>
   return <section className="mobile-home">
     <header><div><span className="mobile-logo"><AppWindow /></span><div><span className="eyebrow">Personal computing</span><strong>Babbage OS</strong></div></div><button onClick={() => onEditing(!editing)}>{editing ? 'Done' : <MoreHorizontal />}</button></header>
     <div className="mobile-widget"><div><span className="eyebrow">Your Metanet</span><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}.</h1><p>{walletStatus === 'connected' ? 'Your encrypted workspace is connected.' : 'Explore freely. Connect only when you save.'}</p></div><Clock profile={profile} /></div>

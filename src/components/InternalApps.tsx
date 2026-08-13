@@ -1,8 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { CircleHelp, ExternalLink, Eye, EyeOff, MessageCircle, Plus, Search, ShieldCheck, Star, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { ArrowLeft, CircleHelp, ExternalLink, Eye, EyeOff, FileText, Folder, FolderPlus, MessageCircle, Pencil, Plus, Save, Search, ShieldCheck, Star, Trash2, WalletCards } from 'lucide-react'
 
 import { HELP_ARTICLES } from '../data/help'
+import { EMBEDDED_APP_PERMISSIONS, frameWalletBridge } from '../lib/frameWalletBridge'
 import { submitFeedback } from '../lib/usercom'
+import { mimeTypeForName, nodeIdFromStuffUrl, stuffFilesystemStore, stuffUrlForNode, type StuffFolder, type StuffFolderEntry, type StuffNode } from '../lib/stuff'
 import type { BabbageAppManifestV1, BrowserBookmark, BrowserCredential, BrowserHistoryEntry, MobileItem, PersistedProfileV1, SystemSettings } from '../types/manifest'
 
 const normalizeUrl = (value: string) => {
@@ -63,7 +65,7 @@ export function BrowserApp({ profile, onBrowserChange }: BrowserProps) {
         <a aria-label="Open externally" href={url} target="_blank" rel="noreferrer"><ExternalLink size={18} /></a>
       </form>
       {error && <p className="inline-error" role="alert">{error}</p>}
-      <iframe className="browser-frame" title="Babbage Browser page" src={url} sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads" />
+      <BrowserFrame src={url} />
     </>}
     {tab === 'bookmarks' && <BrowserList empty="No bookmarks yet." items={profile.browser.bookmarks} onOpen={(next) => { setAddress(next); setUrl(next); setTab('web') }} onDelete={(id) => onBrowserChange({ ...profile.browser, bookmarks: profile.browser.bookmarks.filter((item) => item.id !== id) })} />}
     {tab === 'history' && <BrowserList empty="Your encrypted history is empty." items={profile.browser.history} onOpen={(next) => { setAddress(next); setUrl(next); setTab('web') }} onDelete={(id) => onBrowserChange({ ...profile.browser, history: profile.browser.history.filter((item) => item.id !== id) })} />}
@@ -79,6 +81,15 @@ export function BrowserApp({ profile, onBrowserChange }: BrowserProps) {
       <div className="credential-list">{profile.browser.credentials.map((item) => <article key={item.id}><ShieldCheck /><div><strong>{new URL(item.origin).hostname}</strong><span>{item.username}</span><code>{showPasswords ? item.password : '••••••••••••'}</code></div><button aria-label={`Delete credentials for ${item.origin}`} onClick={() => onBrowserChange({ ...profile.browser, credentials: profile.browser.credentials.filter((candidate) => candidate.id !== item.id) })}><Trash2 /></button></article>)}</div>
     </div>}
   </div>
+}
+
+function BrowserFrame({ src }: { src: string }) {
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  useEffect(() => {
+    if (!frameRef.current) return
+    return frameWalletBridge.registerFrame(frameRef.current, src)
+  }, [src])
+  return <iframe ref={frameRef} className="browser-frame" title="Babbage Browser page" src={src} sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads" allow={EMBEDDED_APP_PERMISSIONS} />
 }
 
 function BrowserList({ items, empty, onOpen, onDelete }: { items: Array<BrowserBookmark | BrowserHistoryEntry>; empty: string; onOpen: (url: string) => void; onDelete: (id: string) => void }) {
@@ -140,6 +151,146 @@ export function FeedbackApp() {
 }
 
 function MessageCircleIcon() { return <MessageCircle size={32} /> }
+
+export function StuffApp({ profile, initialResourceUrl, onProfileChange }: {
+  profile: PersistedProfileV1
+  initialResourceUrl?: string
+  onProfileChange: (profile: PersistedProfileV1, reason: string) => void
+}) {
+  const initialNodeId = nodeIdFromStuffUrl(initialResourceUrl)
+  const [path, setPath] = useState<Array<{ id: string; name: string }>>([{ id: '/', name: 'Stuff' }])
+  const [node, setNode] = useState<StuffNode>({ type: 'folder', nodes: [] })
+  const [currentId, setCurrentId] = useState(initialNodeId ?? '/')
+  const [currentName, setCurrentName] = useState(initialNodeId ? 'File' : 'Stuff')
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState('')
+  const [needsWallet, setNeedsWallet] = useState(false)
+
+  const load = async (id: string, name: string, nextPath?: Array<{ id: string; name: string }>) => {
+    setLoading(true); setStatus('')
+    try {
+      const connected = await stuffFilesystemStore.isConnected()
+      if (!connected) {
+        setNode({ type: 'folder', nodes: [] }); setNeedsWallet(false)
+        if (id !== '/') setStatus('Connect your wallet to open this encrypted Stuff file.')
+      } else {
+        const found = await stuffFilesystemStore.get(id)
+        setNode(found ?? { type: 'folder', nodes: [] })
+      }
+      setCurrentId(id); setCurrentName(name)
+      if (nextPath) setPath(nextPath)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Stuff could not open this item.')
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { void load(initialNodeId ?? '/', initialNodeId ? 'Desktop file' : 'Stuff') }, [initialNodeId])
+
+  const withWallet = async (operation: () => Promise<void>) => {
+    setBusy(true); setStatus('')
+    try {
+      if (!await stuffFilesystemStore.isConnected()) {
+        setNeedsWallet(true)
+        return
+      }
+      await operation()
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Stuff could not save that change.')
+    } finally { setBusy(false) }
+  }
+
+  const connect = async () => {
+    setBusy(true); setStatus('Waiting for your wallet…')
+    try {
+      await stuffFilesystemStore.connect()
+      setNeedsWallet(false)
+      await load(currentId, currentName)
+      setStatus('Wallet connected. Stuff is ready.')
+    } catch { setStatus('No wallet responded. Install or unlock Babbage Go, then retry.') }
+    finally { setBusy(false) }
+  }
+
+  const createEntry = (type: StuffFolderEntry['type']) => {
+    if (node.type !== 'folder') return
+    const name = window.prompt(type === 'folder' ? 'Folder name' : 'File name')?.trim()
+    if (!name) return
+    if (name.includes('/')) { setStatus('Names cannot contain “/”.'); return }
+    void withWallet(async () => {
+      const entry: StuffFolderEntry = { id: crypto.randomUUID(), name, type, mimeType: type === 'file' ? mimeTypeForName(name) : undefined }
+      const next: StuffFolder = { ...node, nodes: [...node.nodes, entry] }
+      await stuffFilesystemStore.set(entry.id, type === 'folder' ? { type: 'folder', nodes: [] } : { type: 'file', contents: '', mimeType: entry.mimeType ?? 'text/plain' })
+      await stuffFilesystemStore.set(currentId, next)
+      setNode(next); setStatus(`${name} created.`)
+    })
+  }
+
+  const renameEntry = (entry: StuffFolderEntry) => {
+    if (node.type !== 'folder') return
+    const name = window.prompt(`Rename ${entry.name}`, entry.name)?.trim()
+    if (!name || name === entry.name) return
+    if (name.includes('/')) { setStatus('Names cannot contain “/”.'); return }
+    void withWallet(async () => {
+      const next = { ...node, nodes: node.nodes.map((item) => item.id === entry.id ? { ...item, name, mimeType: item.type === 'file' ? mimeTypeForName(name) : undefined } : item) }
+      await stuffFilesystemStore.set(currentId, next); setNode(next); setStatus(`Renamed to ${name}.`)
+    })
+  }
+
+  const deleteEntry = (entry: StuffFolderEntry) => {
+    if (node.type !== 'folder' || !window.confirm(`Delete ${entry.name}?`)) return
+    void withWallet(async () => {
+      const next = { ...node, nodes: node.nodes.filter((item) => item.id !== entry.id) }
+      await stuffFilesystemStore.set(currentId, next)
+      await stuffFilesystemStore.remove(entry.id)
+      setNode(next); setStatus(`${entry.name} deleted.`)
+    })
+  }
+
+  const openEntry = (entry: StuffFolderEntry) => {
+    void load(entry.id, entry.name, [...path, { id: entry.id, name: entry.name }])
+  }
+
+  const goBack = () => {
+    if (path.length <= 1) return
+    const next = path.slice(0, -1)
+    const parent = next[next.length - 1]
+    void load(parent.id, parent.name, next)
+  }
+
+  const saveFile = () => {
+    if (node.type !== 'file') return
+    void withWallet(async () => {
+      await stuffFilesystemStore.set(currentId, node)
+      setStatus('Saved securely in Stuff.')
+    })
+  }
+
+  const addToDesktop = () => {
+    if (node.type !== 'file') return
+    const file = {
+      schema: 'babbage-os-desktop-file' as const, schemaVersion: '1.0' as const,
+      id: currentId, name: currentName, stuffUrl: stuffUrlForNode(currentId),
+      mimeType: node.mimeType, extension: currentName.split('.').pop(), preferredAppId: 'stuff',
+      createdAt: new Date().toISOString()
+    }
+    const hasItem = profile.desktopItems.some((item) => item.kind === 'file' && item.targetId === file.id)
+    onProfileChange({
+      ...profile,
+      desktopFiles: [...profile.desktopFiles.filter((item) => item.id !== file.id), file],
+      desktopItems: hasItem ? profile.desktopItems : [...profile.desktopItems, { id: `desktop-file-${file.id}`, kind: 'file', targetId: file.id, x: 448, y: 28 }]
+    }, 'Stuff file shortcut')
+    setStatus('Added to your Babbage OS desktop.')
+  }
+
+  if (loading) return <div className="empty-state"><span className="loading-orbit" /><h2>Opening Stuff…</h2><p>Approve the grouped Babbage OS storage request in your wallet if asked.</p></div>
+
+  return <div className="stuff-app">
+    <header className="stuff-toolbar"><button aria-label="Back" disabled={path.length <= 1} onClick={goBack}><ArrowLeft /></button><div><span className="eyebrow">Encrypted Stuff filesystem</span><strong>{path.map((item) => item.name).join(' / ')}</strong></div>{node.type === 'folder' ? <><button onClick={() => createEntry('folder')} disabled={busy}><FolderPlus /> New folder</button><button onClick={() => createEntry('file')} disabled={busy}><Plus /> New file</button></> : <><button onClick={addToDesktop}><ExternalLink /> Add to desktop</button><button onClick={saveFile} disabled={busy}><Save /> Save</button></>}</header>
+    {needsWallet && <section className="stuff-wallet-callout"><WalletCards /><div><strong>Connect to save in Stuff</strong><p>Your files are encrypted and stored through WalletClient. Stuff has no embedded wallet.</p></div><button onClick={() => void connect()} disabled={busy}>{busy ? 'Waiting…' : 'Connect Babbage Go'}</button></section>}
+    {status && <p className="stuff-status" role="status">{status}</p>}
+    {node.type === 'folder' ? <div className="stuff-grid">{node.nodes.length ? node.nodes.map((entry) => <article key={entry.id}><button className="stuff-entry" onClick={() => openEntry(entry)}><span>{entry.type === 'folder' ? <Folder /> : <FileText />}</span><strong>{entry.name}</strong><small>{entry.type === 'folder' ? 'Folder' : entry.mimeType}</small></button><div><button aria-label={`Rename ${entry.name}`} onClick={() => renameEntry(entry)}><Pencil /></button><button aria-label={`Delete ${entry.name}`} onClick={() => deleteEntry(entry)}><Trash2 /></button></div></article>) : <div className="empty-state"><Folder /><h2>{needsWallet ? 'Your files appear after you connect.' : 'This folder is empty.'}</h2><p>Create a folder or file to get started.</p></div>}</div> : <div className="stuff-editor"><label><span>{currentName}</span><textarea aria-label="File contents" value={node.contents} onChange={(event) => setNode({ ...node, contents: event.target.value })} /></label></div>}
+  </div>
+}
 
 export function AppPlaceholder({ title }: { title: string }) {
   return <div className="empty-state"><Plus /><h2>{title}</h2><p>This system surface is ready for an integration.</p></div>

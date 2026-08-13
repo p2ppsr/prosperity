@@ -25,6 +25,52 @@ export const createDefaultProfile = (): PersistedProfileV1 => ({
   browser: { bookmarks: [], history: [], credentials: [] }
 })
 
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+export const normalizeProfile = (value: unknown): PersistedProfileV1 | undefined => {
+  if (!isRecord(value) || value.schema !== 'babbage-os-profile' || value.schemaVersion !== '1.0') return undefined
+  const defaults = createDefaultProfile()
+  const settings = isRecord(value.settings) ? value.settings : {}
+  const browser = isRecord(value.browser) ? value.browser : {}
+  const savedApps = Array.isArray(value.installedApps) ? value.installedApps : []
+  const defaultIds = new Set(defaults.installedApps.map((app) => app.id))
+  const customApps = savedApps.filter((app): app is PersistedProfileV1['installedApps'][number] =>
+    isRecord(app) && typeof app.id === 'string' && app.schema === 'babbage-os-app' && !defaultIds.has(app.id)
+  )
+  const savedDesktop = Array.isArray(value.desktopItems) ? value.desktopItems : []
+  const savedMobile = Array.isArray(value.mobileItems) ? value.mobileItems : []
+  const desktopItems = [
+    ...defaults.desktopItems.map((item) => savedDesktop.find((saved) => isRecord(saved) && saved.id === item.id) as typeof item | undefined ?? item),
+    ...savedDesktop.filter((item): item is PersistedProfileV1['desktopItems'][number] => isRecord(item) && typeof item.id === 'string' && !defaults.desktopItems.some((candidate) => candidate.id === item.id))
+  ]
+  const normalizedSavedMobile = savedMobile.filter((item): item is PersistedProfileV1['mobileItems'][number] => isRecord(item) && typeof item.id === 'string' && typeof item.order === 'number')
+  const mobileItems = [
+    ...normalizedSavedMobile,
+    ...defaults.mobileItems.filter((item) => !normalizedSavedMobile.some((saved) => saved.id === item.id))
+      .map((item, index) => ({ ...item, order: normalizedSavedMobile.length + index }))
+  ].sort((a, b) => a.order - b.order).map((item, order) => ({ ...item, order }))
+  const validTimezone = typeof settings.timezone === 'string' && (() => {
+    try { new Intl.DateTimeFormat(undefined, { timeZone: settings.timezone as string }); return true } catch { return false }
+  })()
+  return {
+    ...defaults,
+    settings: {
+      ...defaults.settings,
+      ...(settings as Partial<SystemSettings>),
+      timezone: validTimezone ? settings.timezone as string : defaults.settings.timezone
+    },
+    installedApps: [...defaults.installedApps, ...customApps],
+    desktopItems,
+    mobileItems,
+    desktopFiles: Array.isArray(value.desktopFiles) ? value.desktopFiles as PersistedProfileV1['desktopFiles'] : [],
+    browser: {
+      bookmarks: Array.isArray(browser.bookmarks) ? browser.bookmarks as PersistedProfileV1['browser']['bookmarks'] : [],
+      history: Array.isArray(browser.history) ? browser.history as PersistedProfileV1['browser']['history'] : [],
+      credentials: Array.isArray(browser.credentials) ? browser.credentials as PersistedProfileV1['browser']['credentials'] : []
+    }
+  }
+}
+
 const PROFILE_KEY = 'profile-v1'
 // LocalKVStore uses the context as both a basket and a level-2 BRC-100
 // protocol name. Protocol names allow letters, numbers, and spaces only.
@@ -80,15 +126,7 @@ export class WalletProfileStore {
     const { kv } = await this.getRuntime()
     const value = await kv.get(PROFILE_KEY)
     if (!value) return undefined
-    const parsed = JSON.parse(value) as Partial<PersistedProfileV1>
-    if (parsed.schema !== 'babbage-os-profile' || parsed.schemaVersion !== '1.0') return undefined
-    const defaults = createDefaultProfile()
-    return {
-      ...defaults,
-      ...parsed,
-      settings: { ...defaults.settings, ...parsed.settings },
-      browser: { ...defaults.browser, ...parsed.browser }
-    }
+    return normalizeProfile(JSON.parse(value))
   }
 
   async save(profile: PersistedProfileV1): Promise<void> {

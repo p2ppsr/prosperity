@@ -30,43 +30,26 @@
           "protocolID": [2, "babbage os"],
           "counterparty": "self",
           "description": "Encrypt, decrypt, lock, and unlock your private Babbage OS profile."
-        }
-      ],
-      "basketAccess": [
+        },
         {
-          "basket": "babbage os",
-          "description": "Store and retrieve the encrypted Babbage OS profile token."
-        }
-      ],
-      "spendingAuthorization": {
-        "amount": 10000,
-        "duration": 2592000,
-        "description": "Create and update encrypted Babbage OS profile tokens for one month."
-      },
-      "certificateAccess": []
-    }
-  },
-  "babbage": {
-    "schemaVersion": 1,
-    "groupPermissions": {
-      "description": "Encrypt and persist your Babbage OS profile.",
-      "protocolPermissions": [
-        {
-          "protocolID": [2, "babbage os"],
+          "protocolID": [2, "filesystem"],
           "counterparty": "self",
-          "description": "Encrypt, decrypt, lock, and unlock your private Babbage OS profile."
+          "description": "Encrypt, decrypt, lock, and unlock files and folders in Stuff."
         }
       ],
       "basketAccess": [
         {
           "basket": "babbage os",
           "description": "Store and retrieve the encrypted Babbage OS profile token."
+        },
+        {
+          "basket": "filesystem",
+          "description": "Store and retrieve encrypted Stuff filesystem nodes."
         }
       ],
       "spendingAuthorization": {
-        "amount": 10000,
-        "duration": 2592000,
-        "description": "Create and update encrypted Babbage OS profile tokens for one month."
+        "amount": 100000,
+        "description": "Monthly authorization for encrypted Babbage OS profile and Stuff filesystem updates."
       },
       "certificateAccess": []
     }

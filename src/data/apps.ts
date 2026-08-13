@@ -19,10 +19,9 @@ const internalApp = (
 })
 
 export const DEFAULT_APPS: BabbageAppManifestV1[] = [
-  iframeApp({
+  internalApp({
     id: 'stuff', name: 'Stuff', shortName: 'Stuff', icon: 'folder', category: 'files', featured: true,
     description: 'Your wallet-backed filesystem and file explorer.',
-    url: 'https://frontend.8269defdfbae9c6d217aa158ae29e9be.projects.babbage.systems',
     capabilities: ['wallet', 'files'],
     fileAssociations: [{ extensions: ['*'], mimeTypes: ['*/*'], role: 'viewer' }],
     window: { width: 980, height: 680, minWidth: 560, minHeight: 380 }

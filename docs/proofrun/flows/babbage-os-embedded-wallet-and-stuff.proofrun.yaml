@@ -1,0 +1,78 @@
+proofrunVersion: 1
+id: babbage-os-embedded-wallet-and-stuff
+name: Embedded app wallet substrates and Stuff desktop handoff
+surface:
+  repo: p2ppsr/prosperity
+  workspace: /Users/tyeverett/projects/prosperity
+  dossier: docs/repos/p2ppsr/prosperity.md
+  category: authenticate
+  audience: Desktop and mobile users who run wallet-native apps inside Babbage OS.
+environment:
+  kind: production
+  baseUrl: "https://babbageos.com"
+  healthEndpoints: ["https://babbageos.com/", "https://babbageos.com/manifest.json"]
+  deployment:
+    system: cars
+    workflow: Verify and deploy Babbage OS
+    namespace: cars-project-a722566348144abe23e2bd7342f3a425
+    workload: deployment/cars-project-a722566348144abe23e2bd73-deployment
+    releaseSource: master
+safety:
+  stateChanging: true
+  spendCap: { amount: 100000, unit: sats }
+  testIdentities:
+    - { purpose: user, source: "Operator-provided Babbage Go profile; never record keys or decrypted content." }
+  cleanup: { required: true, instructions: Remove the test Stuff folder/file and desktop shortcut; restore original profile layout. }
+matrix:
+  desktopBrowsers: [chrome, safari]
+  mobileBrowsers: [chrome-responsive, safari-responsive]
+  mobileSimulators: []
+  desktopWallets: [babbage-go-localhost, injected-cwi, xdm]
+  mobileWallets: [react-native, xdm]
+  serverWallets: []
+  networks: [mainnet]
+preflight:
+  commands:
+    - { description: Verify source and manifest, command: "npm run verify && curl -fsS https://babbageos.com/manifest.json", cwd: /Users/tyeverett/projects/prosperity }
+  requiredState:
+    - BRC-116 manifest contains exact babbage os and filesystem protocol/basket scopes.
+    - Embedded frames delegate local-network, loopback-network, and local-network-access.
+flow:
+  steps:
+    - id: guest-stuff
+      actor: walletless-user
+      action: Open Stuff, inspect the empty guest explorer, and choose New file.
+      expected: { ui: [Explorer opens without a wallet., Connect to save in Stuff appears only after the write attempt.] }
+    - id: grouped-storage
+      actor: test-user
+      action: Connect Babbage Go and approve the grouped Babbage OS profile and Stuff LocalKV permissions.
+      expected: { ui: [One coherent grouped prompt covers both exact encrypted LocalKV protocols, baskets, and monthly spending authorization.] }
+    - id: stuff-file
+      actor: test-user
+      action: Create a folder and Markdown file, edit and save it, add it to the desktop, reload, and reopen the shortcut.
+      expected: { domain: [Encrypted filesystem nodes and BabbageDesktopFileV1 shortcut persist.], ui: [The shortcut reopens through Stuff or its exact file association.] }
+    - id: nested-app-wallet
+      actor: test-user
+      action: Open Convo and Metanet Docs inside Babbage OS, then exercise each wallet-authenticated landing state.
+      expected: { domain: [Nested XDM or delegated localhost transport reaches the wallet with each app hostname preserved as originator.], ui: [Apps do not report that Metanet Client is missing.] }
+    - id: responsive
+      actor: test-user
+      action: Repeat Stuff open/save/reopen and an embedded wallet app on phone-sized Chrome and Safari layouts.
+      expected: { ui: [Mobile home and full-screen app surfaces remain usable without changing desktop icon positions.] }
+assertions:
+  uiAppearance: [Stuff controls, files, dialogs, and embedded apps fit desktop and mobile viewports.]
+  audienceIntuition: [Wallet ownership and grouped permission purpose are clear.]
+  customerTrust: [The relay accepts only registered frame sources, exact origins, and BRC-100 methods.]
+  flowSuccess: [Stuff persists and embedded apps reach localhost or another available WalletClient substrate.]
+  telemetryObservability: [No private file, wallet, or app content enters telemetry.]
+  reliabilityRepeatability: [Cleanup removes every synthetic file and shortcut.]
+  performance: [Guest fallback and wallet discovery are bounded.]
+evidence:
+  publicSafe: [Run record in docs/proofrun/runs/.]
+  privateArtifacts: [network-ops/artifacts/proofrun/p2ppsr/prosperity/]
+telemetry: { expectedEvents: [], queryInstructions: "Use UI state and wallet transport results; never inspect decrypted user content." }
+performanceThresholds: { firstMeaningfulContentMs: 2000, uiFeedbackAfterActionMs: 500, walletPromptShownMs: 5000, approvalToConfirmationMs: 10000, fullFlowMs: 90000, telemetryVisibleMs: 60000 }
+recording:
+  productRunPath: docs/proofrun/runs/<YYYYMMDDTHHMMSSZ>-babbage-os-embedded-wallet-and-stuff.md
+  updateDossier: true
+  updateReadinessRegistry: true
