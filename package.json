@@ -39,10 +39,5 @@
     "typescript": "7.0.2",
     "vite": "8.2.1",
     "vitest": "^3.2.4"
-  },
-  "overrides": {
-    "babbage-kvstore": {
-      "@bsv/sdk": "2.4.0"
-    }
   }
 }

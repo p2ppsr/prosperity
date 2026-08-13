@@ -11,6 +11,7 @@ import { AppIcon } from './components/AppIcon'
 import { BrowserApp, FeedbackApp, HelpCenter, SettingsApp } from './components/InternalApps'
 import { DEFAULT_APPS } from './data/apps'
 import { resolveFileApp } from './lib/fileAssociations'
+import { positionDesktopItem, reorderMobileItem } from './lib/layout'
 import { createDefaultProfile, walletInstallUrl, walletProfileStore } from './lib/profile'
 import type {
   BabbageAppManifestV1, BabbageDesktopFileV1, DesktopItem, MobileItem,
@@ -155,14 +156,7 @@ export default function App() {
   const updateDesktopItem = (id: string, x: number, y: number) => {
     const rect = desktopRef.current?.getBoundingClientRect()
     if (!rect) return
-    const next = {
-      ...profile,
-      desktopItems: profile.desktopItems.map((item) => item.id === id ? {
-        ...item,
-        x: Math.max(8, Math.min(rect.width - 88, x - rect.left - 38)),
-        y: Math.max(8, Math.min(rect.height - 92, y - rect.top - 32))
-      } : item)
-    }
+    const next = positionDesktopItem(profile, id, x, y, rect)
     void persist(next, 'desktop icon position')
   }
 
@@ -239,12 +233,8 @@ export default function App() {
       {launcherOpen && <Launcher apps={launcherApps} query={launcherQuery} onQuery={setLauncherQuery} onOpen={openApp} onAddApp={() => setAddAppOpen(true)} onAddFile={() => setAddFileOpen(true)} />}
       {notificationsOpen && <NotificationCenter walletStatus={walletStatus} saveMessage={saveMessage} onFeedback={() => openApp('feedback')} />}
     </div> : <MobileHome profile={profile} activeApp={activeMobileApp} editing={mobileEditing} walletStatus={walletStatus} onEditing={setMobileEditing} onOpen={openApp} onCloseApp={() => setMobileAppId(null)} onProfileChange={(next, reason) => void persist(next, reason)} onMove={(id, direction) => {
-      const sorted = [...profile.mobileItems].sort((a, b) => a.order - b.order)
-      const index = sorted.findIndex((item) => item.id === id)
-      const target = index + direction
-      if (target < 0 || target >= sorted.length) return
-      ;[sorted[index], sorted[target]] = [sorted[target], sorted[index]]
-      const next = { ...profile, mobileItems: sorted.map((item, order) => ({ ...item, order })) }
+      const next = reorderMobileItem(profile, id, direction < 0 ? -1 : 1)
+      if (next === profile) return
       void persist(next, 'mobile home order')
     }} onFeedback={() => openApp('feedback')} onHelp={() => openApp('help')} onSettings={() => openApp('settings')} />}
     {saveRequest && <WalletDialog status={walletStatus} reason={saveRequest.reason} onConnect={() => void connectAndSave()} onDismiss={() => { setSaveRequest(null); if (walletStatus === 'error') setWalletStatus('guest') }} />}
