@@ -12,7 +12,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   accent: 'cyan',
   reduceMotion: false,
   showSeconds: false,
-  desktopNotifications: false
+  desktopNotifications: false,
+  timeMode: 'timezone'
 }
 
 export const createDefaultProfile = (): PersistedProfileV1 => ({
@@ -58,7 +59,8 @@ export const normalizeProfile = (value: unknown): PersistedProfileV1 | undefined
     settings: {
       ...defaults.settings,
       ...(settings as Partial<SystemSettings>),
-      timezone: validTimezone ? settings.timezone as string : defaults.settings.timezone
+      timezone: validTimezone ? settings.timezone as string : defaults.settings.timezone,
+      timeMode: settings.timeMode === 'localized' ? 'localized' : 'timezone'
     },
     installedApps: [...defaults.installedApps, ...customApps],
     desktopItems,

@@ -119,11 +119,12 @@ function BrowserList({ items, empty, onOpen, onDelete }: { items: Array<BrowserB
 
 function GlobeEmpty() { return <div className="empty-orbit"><span /></div> }
 
-export function SettingsApp({ settings, mobileItems, installedApps, onChange, onMoveMobile, onRemoveApp }: {
+export function SettingsApp({ settings, mobileItems, installedApps, onChange, onLocalizedTimeHelp, onMoveMobile, onRemoveApp }: {
   settings: SystemSettings
   mobileItems: MobileItem[]
   installedApps: BabbageAppManifestV1[]
   onChange: (settings: SystemSettings) => void
+  onLocalizedTimeHelp: () => void
   onMoveMobile: (id: string, direction: -1 | 1) => void
   onRemoveApp: (id: string) => void
 }) {
@@ -143,9 +144,10 @@ export function SettingsApp({ settings, mobileItems, installedApps, onChange, on
       <label>Custom wallpaper URL<input type="url" placeholder="https://…" value={settings.customWallpaperUrl} onChange={(event) => updateCustomWallpaper(event.target.value)} /></label>
       <label>Accent<select value={settings.accent} onChange={(event) => update('accent', event.target.value as SystemSettings['accent'])}><option value="cyan">Cyan</option><option value="violet">Violet</option><option value="coral">Coral</option><option value="green">Green</option></select></label>
     </section>
-    <section><h3>Time & motion</h3><label>Timezone<select value={settings.timezone} onChange={(event) => update('timezone', event.target.value)}>{timezones.map((timezone) => <option key={timezone}>{timezone}</option>)}</select></label>
-      <label className="toggle"><input type="checkbox" checked={settings.clock24Hour} onChange={(event) => update('clock24Hour', event.target.checked)} /><span />24-hour clock</label>
-      <label className="toggle"><input type="checkbox" checked={settings.showSeconds} onChange={(event) => update('showSeconds', event.target.checked)} /><span />Show seconds</label>
+    <section><h3>Time & motion</h3><div className="time-mode-heading"><span>Taskbar clock</span></div><div className="segmented time-mode-picker"><button className={settings.timeMode === 'timezone' ? 'active' : ''} onClick={() => update('timeMode', 'timezone')}>Timezone time</button><button className={settings.timeMode === 'localized' ? 'active' : ''} onClick={() => update('timeMode', 'localized')}>Localized Time</button><button className="time-help-button" aria-label="Help with Localized Time" title="About Localized Time" onClick={onLocalizedTimeHelp}><CircleHelp size={17} /></button></div>
+      {settings.timeMode === 'localized' ? <p className="localized-time-note">Uses browser location permission to calculate sunrise and sunset on this device. Coordinates are never stored or sent to a service.</p> : <label>Timezone<select value={settings.timezone} onChange={(event) => update('timezone', event.target.value)}>{timezones.map((timezone) => <option key={timezone}>{timezone}</option>)}</select></label>}
+      {settings.timeMode === 'timezone' && <><label className="toggle"><input type="checkbox" checked={settings.clock24Hour} onChange={(event) => update('clock24Hour', event.target.checked)} /><span />24-hour clock</label>
+      <label className="toggle"><input type="checkbox" checked={settings.showSeconds} onChange={(event) => update('showSeconds', event.target.checked)} /><span />Show seconds</label></>}
       <label className="toggle"><input type="checkbox" checked={settings.reduceMotion} onChange={(event) => update('reduceMotion', event.target.checked)} /><span />Reduce motion</label>
     </section>
     <section><h3>Notifications</h3><p>Metanet messages and payments appear in the system tray while your wallet is connected.</p><label className="toggle"><input type="checkbox" checked={settings.desktopNotifications} onChange={(event) => update('desktopNotifications', event.target.checked)} /><span />Browser alerts for new Metanet activity</label></section>
@@ -154,14 +156,15 @@ export function SettingsApp({ settings, mobileItems, installedApps, onChange, on
   </div>
 }
 
-export function HelpCenter() {
+export function HelpCenter({ initialArticleId }: { initialArticleId?: string }) {
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState(HELP_ARTICLES[0].id)
+  const [selected, setSelected] = useState(initialArticleId ?? HELP_ARTICLES[0].id)
+  useEffect(() => { if (initialArticleId) setSelected(initialArticleId) }, [initialArticleId])
   const results = HELP_ARTICLES.filter((article) => `${article.title} ${article.section} ${article.body.join(' ')}`.toLowerCase().includes(query.toLowerCase()))
   const article = HELP_ARTICLES.find((candidate) => candidate.id === selected) ?? results[0] ?? HELP_ARTICLES[0]
   return <div className="help-app">
     <aside><div className="help-brand"><CircleHelp /><div><strong>Help Center</strong><span>Complete user manual</span></div></div><label className="help-search"><Search size={18} /><input aria-label="Search help" placeholder="Search instructions…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><nav>{results.map((item) => <button className={item.id === article.id ? 'active' : ''} onClick={() => setSelected(item.id)} key={item.id}><small>{item.section}</small>{item.title}</button>)}</nav></aside>
-    <article><span className="eyebrow">{article.section}</span><h1>{article.title}</h1>{article.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="help-callout"><strong>Still need help?</strong><span>Use Feedback in the system tray and tell us what happened.</span></div></article>
+    <article><span className="eyebrow">{article.section}</span><h1>{article.title}</h1>{article.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}{article.sourceUrl && <a className="help-source-link" href={article.sourceUrl} target="_blank" rel="noreferrer">Read the original Localized Time page <ExternalLink size={15} /></a>}<div className="help-callout"><strong>Still need help?</strong><span>Use Feedback in the system tray and tell us what happened.</span></div></article>
   </div>
 }
 

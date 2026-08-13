@@ -11,7 +11,7 @@ describe('System Settings', () => {
   it('selects and persists a custom wallpaper atomically', () => {
     const profile = createDefaultProfile()
     const onChange = vi.fn()
-    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={DEFAULT_APPS} onChange={onChange} onMoveMobile={vi.fn()} onRemoveApp={vi.fn()} />)
+    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={DEFAULT_APPS} onChange={onChange} onLocalizedTimeHelp={vi.fn()} onMoveMobile={vi.fn()} onRemoveApp={vi.fn()} />)
 
     fireEvent.change(screen.getByLabelText('Custom wallpaper URL'), { target: { value: 'https://example.com/wallpaper.png' } })
 
@@ -26,7 +26,7 @@ describe('System Settings', () => {
     const profile = createDefaultProfile()
     profile.settings = { ...profile.settings, wallpaper: 'custom', customWallpaperUrl: 'https://example.com/wallpaper.png' }
     const onChange = vi.fn()
-    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={DEFAULT_APPS} onChange={onChange} onMoveMobile={vi.fn()} onRemoveApp={vi.fn()} />)
+    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={DEFAULT_APPS} onChange={onChange} onLocalizedTimeHelp={vi.fn()} onMoveMobile={vi.fn()} onRemoveApp={vi.fn()} />)
 
     fireEvent.change(screen.getByLabelText('Custom wallpaper URL'), { target: { value: '' } })
 
@@ -43,10 +43,22 @@ describe('System Settings', () => {
       launch: { kind: 'iframe' as const, url: 'https://example.com/' }
     }
     const onRemoveApp = vi.fn()
-    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={[...DEFAULT_APPS, customApp]} onChange={vi.fn()} onMoveMobile={vi.fn()} onRemoveApp={onRemoveApp} />)
+    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={[...DEFAULT_APPS, customApp]} onChange={vi.fn()} onLocalizedTimeHelp={vi.fn()} onMoveMobile={vi.fn()} onRemoveApp={onRemoveApp} />)
 
     expect(screen.queryByRole('button', { name: 'Remove Stuff' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Remove Proof App' }))
     expect(onRemoveApp).toHaveBeenCalledWith('custom-proof-app')
+  })
+
+  it('offers Localized Time and opens its dedicated help article', () => {
+    const profile = createDefaultProfile()
+    const onChange = vi.fn()
+    const onLocalizedTimeHelp = vi.fn()
+    render(<SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={DEFAULT_APPS} onChange={onChange} onLocalizedTimeHelp={onLocalizedTimeHelp} onMoveMobile={vi.fn()} onRemoveApp={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Localized Time' }))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ timeMode: 'localized' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Help with Localized Time' }))
+    expect(onLocalizedTimeHelp).toHaveBeenCalledTimes(1)
   })
 })
