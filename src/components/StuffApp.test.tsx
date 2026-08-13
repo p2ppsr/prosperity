@@ -47,4 +47,25 @@ describe('Stuff filesystem explorer', () => {
       'Stuff file shortcut'
     ))
   })
+
+  it('removes an existing desktop shortcut without deleting the Stuff file', async () => {
+    vi.spyOn(stuffFilesystemStore, 'isConnected').mockResolvedValue(true)
+    vi.spyOn(stuffFilesystemStore, 'get').mockResolvedValue({ type: 'file', contents: '# Manual', mimeType: 'text/markdown' })
+    const profile = createDefaultProfile()
+    profile.desktopFiles = [{
+      schema: 'babbage-os-desktop-file', schemaVersion: '1.0', id: 'manual-id', name: 'manual.md',
+      stuffUrl: 'stuff://manual-id', mimeType: 'text/markdown', extension: 'md', preferredAppId: 'stuff', createdAt: new Date().toISOString()
+    }]
+    profile.desktopItems = [{ id: 'desktop-file-manual-id', kind: 'file', targetId: 'manual-id', x: 448, y: 28 }]
+    const onProfileChange = vi.fn()
+
+    render(<StuffApp profile={profile} initialResourceUrl="https://babbageos.com/#stuff=manual-id" onProfileChange={onProfileChange} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /remove from desktop/i }))
+    expect(onProfileChange).toHaveBeenCalledWith(
+      expect.objectContaining({ desktopFiles: [], desktopItems: [] }),
+      'Remove Stuff file shortcut'
+    )
+    expect(await screen.findByText(/file remains safely in Stuff/i)).toBeInTheDocument()
+  })
 })
