@@ -1,5 +1,4 @@
-import type { WalletClient } from '@bsv/sdk'
-import type { LocalKVStore } from 'babbage-kvstore'
+import type { LocalKVStore, WalletClient } from '@bsv/sdk'
 
 import { DEFAULT_APPS, getDefaultDesktopItems, getDefaultMobileItems } from '../data/apps'
 import type { PersistedProfileV1, SystemSettings } from '../types/manifest'
@@ -45,9 +44,12 @@ export class WalletProfileStore {
 
   private getRuntime() {
     if (!this.runtime) {
-      this.runtime = Promise.all([import('@bsv/sdk'), import('babbage-kvstore')]).then(([sdk, storage]) => {
+      this.runtime = import('@bsv/sdk').then((sdk) => {
         const wallet = new sdk.WalletClient('auto', window.location.hostname)
-        return { wallet, kv: new storage.LocalKVStore(wallet, CONTEXT, true) }
+        return {
+          wallet,
+          kv: new sdk.LocalKVStore(wallet, CONTEXT, true, window.location.hostname)
+        }
       })
     }
     return this.runtime
