@@ -1,0 +1,69 @@
+proofrunVersion: 1
+id: babbage-os-connected-wallet-persistence
+name: Connected Babbage Go encrypted profile persistence
+surface:
+  repo: p2ppsr/prosperity
+  workspace: /Users/tyeverett/projects/prosperity
+  dossier: docs/repos/p2ppsr/prosperity.md
+  category: authenticate
+  audience: Babbage Go users who expect their OS profile to follow their wallet.
+environment:
+  kind: production
+  baseUrl: "https://babbageos.com"
+  healthEndpoints:
+    - "https://babbageos.com/"
+  deployment:
+    system: cars
+    workflow: Verify and deploy Babbage OS
+    namespace: cars-project-a722566348144abe23e2bd7342f3a425
+    workload: deployment/cars-project-a722566348144abe23e2bd73-deployment
+    releaseSource: master
+safety:
+  stateChanging: true
+  spendCap: { amount: 0, unit: sats }
+  testIdentities:
+    - { purpose: user, source: "Operator-provided Babbage Go test profile; never record keys." }
+  cleanup: { required: true, instructions: Restore the original theme and remove test bookmark, credential, app, and Stuff shortcut. }
+matrix:
+  desktopBrowsers: [chrome]
+  mobileBrowsers: []
+  mobileSimulators: []
+  desktopWallets: [babbage-go]
+  mobileWallets: []
+  serverWallets: []
+  networks: [mainnet]
+preflight:
+  commands:
+    - { description: Verify production HTML, command: "curl -fsS https://babbageos.com/", cwd: /Users/tyeverett/projects/network-ops }
+  requiredState: [Babbage Go is installed, unlocked, and available to WalletClient., Spend cap is zero.]
+flow:
+  steps:
+    - id: connect
+      actor: test-user
+      action: Change a setting and authorize Babbage Go when prompted.
+      expected: { ui: [Saved to your wallet confirmation appears.] }
+    - id: persist-profile
+      actor: test-user
+      action: Move a desktop icon, reorder one mobile icon, and add a browser bookmark.
+      expected: { domain: [Encrypted LocalKVStore profile-v1 is updated.] }
+    - id: reload
+      actor: test-user
+      action: Reload and revisit desktop and mobile layouts.
+      expected: { ui: [Settings, layouts, and bookmark are restored independently.] }
+assertions:
+  uiAppearance: [Saved state renders without layout drift.]
+  audienceIntuition: [The wallet prompt explains the persistence purpose.]
+  customerTrust: [No wallet key or plaintext credential is stored by Babbage OS.]
+  flowSuccess: [All profile fields survive reload through encrypted LocalKVStore.]
+  telemetryObservability: [Browser console contains no unexpected errors.]
+  reliabilityRepeatability: [Cleanup returns the profile to its starting state.]
+  performance: [Wallet prompt and save confirmation meet thresholds.]
+evidence:
+  publicSafe: [Run record in docs/proofrun/runs/.]
+  privateArtifacts: [network-ops/artifacts/proofrun/p2ppsr/prosperity/]
+telemetry: { expectedEvents: [], queryInstructions: "Use visible save confirmation and wallet storage behavior; never inspect encrypted values." }
+performanceThresholds: { firstMeaningfulContentMs: 2000, uiFeedbackAfterActionMs: 500, walletPromptShownMs: 5000, approvalToConfirmationMs: 10000, fullFlowMs: 45000, telemetryVisibleMs: 60000 }
+recording:
+  productRunPath: docs/proofrun/runs/<YYYYMMDDTHHMMSSZ>-babbage-os-connected-wallet-persistence.md
+  updateDossier: true
+  updateReadinessRegistry: true
