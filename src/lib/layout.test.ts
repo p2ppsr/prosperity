@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { createDefaultProfile } from './profile'
-import { positionDesktopItem, reorderMobileItem } from './layout'
+import { nudgeDesktopItem, positionDesktopItem, reorderMobileItem } from './layout'
 
 describe('independent desktop and mobile layouts', () => {
   it('moves a desktop icon without changing mobile order', () => {
@@ -27,6 +27,14 @@ describe('independent desktop and mobile layouts', () => {
     expect(after[1].id).toBe(before[0].id)
     expect(after.map((item) => item.order)).toEqual(after.map((_, index) => index))
     expect(next.desktopItems).toBe(profile.desktopItems)
+  })
+
+  it('supports bounded keyboard movement without changing mobile order', () => {
+    const profile = createDefaultProfile()
+    const next = nudgeDesktopItem(profile, 'desktop-stuff', 16, 16, { width: 1200, height: 800 })
+
+    expect(next.desktopItems.find((item) => item.id === 'desktop-stuff')).toMatchObject({ x: 40, y: 44 })
+    expect(next.mobileItems).toBe(profile.mobileItems)
   })
 
   it('does not mutate layout at a reorder boundary', () => {

@@ -155,6 +155,13 @@ button { color: inherit; }
 .toggle span::after { content: ''; display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
 .toggle input:checked + span { background: rgba(var(--accent-rgb),.35); }
 .toggle input:checked + span::after { transform: translateX(16px); background: var(--accent); }
+.mobile-layout-settings { display: grid; gap: 8px; }
+.mobile-layout-settings article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-soft); }
+.mobile-layout-settings article > span { display: flex; align-items: center; gap: 7px; }
+.mobile-layout-settings article > span:first-child { display: grid; gap: 2px; }
+.mobile-layout-settings small { color: var(--muted); }
+.mobile-layout-settings button { padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: transparent; cursor: pointer; }
+.mobile-layout-settings button:disabled { opacity: .35; cursor: default; }
 
 .help-app { display: grid; grid-template-columns: 275px 1fr; overflow: hidden; }
 .help-app aside { min-height: 0; display: grid; grid-template-rows: auto auto 1fr; gap: 14px; padding: 20px 14px; border-right: 1px solid var(--line); background: var(--panel); }
