@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, CircleHelp, ExternalLink, Eye, EyeOff, FileText, Folder, FolderPlus, MessageCircle, Pencil, Plus, Save, Search, ShieldCheck, Star, Trash2, WalletCards } from 'lucide-react'
 
 import { HELP_ARTICLES } from '../data/help'
+import { DEFAULT_APPS } from '../data/apps'
 import { EMBEDDED_APP_PERMISSIONS, frameWalletBridge } from '../lib/frameWalletBridge'
 import { submitFeedback } from '../lib/usercom'
 import { mimeTypeForName, nodeIdFromStuffUrl, stuffFilesystemStore, stuffUrlForNode, type StuffFolder, type StuffFolderEntry, type StuffNode } from '../lib/stuff'
@@ -12,6 +13,10 @@ const normalizeUrl = (value: string) => {
   const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
   if (url.protocol !== 'https:' && url.hostname !== 'localhost') throw new Error('Only secure HTTPS pages can open in Babbage Browser.')
   return url.toString()
+}
+
+const hostnameForApp = (app: BabbageAppManifestV1) => {
+  try { return new URL(app.launch.url).hostname || 'Custom app' } catch { return 'Custom app' }
 }
 
 type BrowserProps = {
@@ -99,14 +104,20 @@ function BrowserList({ items, empty, onOpen, onDelete }: { items: Array<BrowserB
 
 function GlobeEmpty() { return <div className="empty-orbit"><span /></div> }
 
-export function SettingsApp({ settings, mobileItems, installedApps, onChange, onMoveMobile }: {
+export function SettingsApp({ settings, mobileItems, installedApps, onChange, onMoveMobile, onRemoveApp }: {
   settings: SystemSettings
   mobileItems: MobileItem[]
   installedApps: BabbageAppManifestV1[]
   onChange: (settings: SystemSettings) => void
   onMoveMobile: (id: string, direction: -1 | 1) => void
+  onRemoveApp: (id: string) => void
 }) {
   const update = <K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) => onChange({ ...settings, [key]: value })
+  const updateCustomWallpaper = (value: string) => onChange({
+    ...settings,
+    customWallpaperUrl: value,
+    wallpaper: value.trim() ? 'custom' : 'babbage-dawn'
+  })
   const timezones = useMemo(() => {
     try { return Intl.supportedValuesOf('timeZone') } catch { return ['UTC', 'America/Los_Angeles', 'America/New_York', 'Europe/London', 'Asia/Tokyo'] }
   }, [])
@@ -114,7 +125,7 @@ export function SettingsApp({ settings, mobileItems, installedApps, onChange, on
     <div className="settings-hero"><span className="eyebrow">Personal computing, made yours</span><h2>System Settings</h2><p>Changes preview immediately and save into your encrypted wallet profile.</p></div>
     <section><h3>Appearance</h3><div className="segmented">{(['system', 'light', 'dark'] as const).map((theme) => <button className={settings.theme === theme ? 'active' : ''} onClick={() => update('theme', theme)} key={theme}>{theme}</button>)}</div>
       <div className="wallpaper-grid">{(['babbage-dawn', 'babbage-midnight'] as const).map((wallpaper) => <button className={settings.wallpaper === wallpaper ? 'active' : ''} key={wallpaper} onClick={() => update('wallpaper', wallpaper)}><span style={{ backgroundImage: `url(/wallpapers/${wallpaper}.png)` }} /><strong>{wallpaper === 'babbage-dawn' ? 'Babbage Dawn' : 'Babbage Midnight'}</strong></button>)}</div>
-      <label>Custom wallpaper URL<input placeholder="https://…" value={settings.customWallpaperUrl} onChange={(event) => { update('customWallpaperUrl', event.target.value); if (event.target.value) update('wallpaper', 'custom') }} /></label>
+      <label>Custom wallpaper URL<input type="url" placeholder="https://…" value={settings.customWallpaperUrl} onChange={(event) => updateCustomWallpaper(event.target.value)} /></label>
       <label>Accent<select value={settings.accent} onChange={(event) => update('accent', event.target.value as SystemSettings['accent'])}><option value="cyan">Cyan</option><option value="violet">Violet</option><option value="coral">Coral</option><option value="green">Green</option></select></label>
     </section>
     <section><h3>Time & motion</h3><label>Timezone<select value={settings.timezone} onChange={(event) => update('timezone', event.target.value)}>{timezones.map((timezone) => <option key={timezone}>{timezone}</option>)}</select></label>
@@ -123,6 +134,7 @@ export function SettingsApp({ settings, mobileItems, installedApps, onChange, on
       <label className="toggle"><input type="checkbox" checked={settings.reduceMotion} onChange={(event) => update('reduceMotion', event.target.checked)} /><span />Reduce motion</label>
     </section>
     <section><h3>Mobile home layout</h3><p>Arrange the phone home screen without moving desktop icons.</p><div className="mobile-layout-settings">{[...mobileItems].sort((a, b) => a.order - b.order).map((item, index, ordered) => { const app = installedApps.find((candidate) => candidate.id === item.targetId); if (!app) return null; return <article key={item.id}><span><strong>{app.name}</strong><small>Position {index + 1}</small></span><span><button aria-label={`Move ${app.name} earlier on mobile`} disabled={index === 0} onClick={() => onMoveMobile(item.id, -1)}>Earlier</button><button aria-label={`Move ${app.name} later on mobile`} disabled={index === ordered.length - 1} onClick={() => onMoveMobile(item.id, 1)}>Later</button></span></article> })}</div></section>
+    <section><h3>Installed apps</h3><p>Built-in apps are part of Babbage OS. Apps you add can be removed from both desktop and mobile without affecting app-owned data.</p><div className="installed-app-settings">{installedApps.map((app) => { const builtIn = DEFAULT_APPS.some((candidate) => candidate.id === app.id); return <article key={app.id}><span><strong>{app.name}</strong><small>{builtIn ? 'Built in' : hostnameForApp(app)}</small></span>{builtIn ? <span className="built-in-label">Built in</span> : <button aria-label={`Remove ${app.name}`} onClick={() => onRemoveApp(app.id)}><Trash2 size={16} /> Remove</button>}</article> })}</div></section>
   </div>
 }
 
