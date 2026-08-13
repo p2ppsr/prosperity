@@ -65,6 +65,7 @@ export type WindowState = WindowBounds & {
   url?: string
   minimized: boolean
   maximized: boolean
+  snap?: 'left' | 'right'
   zIndex: number
   restoreBounds?: WindowBounds
 }
@@ -80,6 +81,7 @@ export type SystemSettings = {
   accent: 'cyan' | 'violet' | 'coral' | 'green'
   reduceMotion: boolean
   showSeconds: boolean
+  desktopNotifications: boolean
 }
 
 export type BrowserBookmark = { id: string; title: string; url: string }

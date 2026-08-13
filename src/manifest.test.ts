@@ -9,10 +9,11 @@ describe('BRC-116 application manifest', () => {
     expect(manifest.babbage).toBeUndefined()
   })
 
-  it('groups the exact encrypted profile and Stuff LocalKVStore scopes', () => {
+  it('groups the exact encrypted profile, Stuff, and MessageBox AuthFetch scopes', () => {
     expect(manifest.metanet.groupPermissions.protocolPermissions).toEqual([
       expect.objectContaining({ protocolID: [2, 'babbage os'], counterparty: 'self' }),
-      expect.objectContaining({ protocolID: [2, 'filesystem'], counterparty: 'self' })
+      expect.objectContaining({ protocolID: [2, 'filesystem'], counterparty: 'self' }),
+      expect.objectContaining({ protocolID: [1, 'messagebox'], counterparty: 'self' })
     ])
     expect(manifest.metanet.groupPermissions.basketAccess.map((item: { basket: string }) => item.basket)).toEqual(['babbage os', 'filesystem'])
   })

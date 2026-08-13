@@ -24,7 +24,7 @@
     "repositoryUrl": "https://github.com/p2ppsr/prosperity",
     "supportUrl": "https://usercom.babbage.systems/",
     "groupPermissions": {
-      "description": "Encrypt and persist your Babbage OS preferences, independent desktop and mobile layouts, app catalogue, file shortcuts, and private browser data.",
+      "description": "Encrypt and persist your Babbage OS workspace, use Stuff, and receive Metanet message and payment notifications.",
       "protocolPermissions": [
         {
           "protocolID": [2, "babbage os"],
@@ -35,6 +35,11 @@
           "protocolID": [2, "filesystem"],
           "counterparty": "self",
           "description": "Encrypt, decrypt, lock, and unlock files and folders in Stuff."
+        },
+        {
+          "protocolID": [1, "messagebox"],
+          "counterparty": "self",
+          "description": "Authenticate to MessageBox and retrieve Metanet message and payment notifications."
         }
       ],
       "basketAccess": [
