@@ -11,7 +11,7 @@ import { AppIcon } from './components/AppIcon'
 import { BrowserApp, FeedbackApp, HelpCenter, SettingsApp } from './components/InternalApps'
 import { DEFAULT_APPS } from './data/apps'
 import { resolveFileApp } from './lib/fileAssociations'
-import { positionDesktopItem, reorderMobileItem } from './lib/layout'
+import { nudgeDesktopItem, positionDesktopItem, reorderMobileItem } from './lib/layout'
 import { createDefaultProfile, walletInstallUrl, walletProfileStore } from './lib/profile'
 import type {
   BabbageAppManifestV1, BabbageDesktopFileV1, DesktopItem, MobileItem,
@@ -160,6 +160,13 @@ export default function App() {
     void persist(next, 'desktop icon position')
   }
 
+  const nudgeDesktop = (id: string, deltaX: number, deltaY: number) => {
+    const rect = desktopRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const next = nudgeDesktopItem(profile, id, deltaX, deltaY, rect)
+    if (next !== profile) void persist(next, 'desktop icon position')
+  }
+
   const openDesktopItem = (item: DesktopItem | MobileItem) => {
     if (item.kind === 'app') openApp(item.targetId)
     else {
@@ -206,7 +213,7 @@ export default function App() {
   return <main className={rootClass} style={{ '--wallpaper': `url("${wallpaper.replaceAll('"', '%22')}")` } as React.CSSProperties}>
     {!isMobile ? <div className="desktop-shell" ref={desktopRef} onMouseDown={() => { setLauncherOpen(false); setNotificationsOpen(false) }}>
       <div className="desktop-icons">
-        {profile.desktopItems.map((item) => <DesktopIcon key={item.id} item={item} profile={profile} onOpen={() => openDesktopItem(item)} onMove={(x, y) => updateDesktopItem(item.id, x, y)} />)}
+        {profile.desktopItems.map((item) => <DesktopIcon key={item.id} item={item} profile={profile} onOpen={() => openDesktopItem(item)} onMove={(x, y) => updateDesktopItem(item.id, x, y)} onNudge={(deltaX, deltaY) => nudgeDesktop(item.id, deltaX, deltaY)} />)}
       </div>
       <div className="window-layer">
         {windows.map((windowState) => {
@@ -244,11 +251,11 @@ export default function App() {
   </main>
 }
 
-function DesktopIcon({ item, profile, onOpen, onMove }: { item: DesktopItem; profile: PersistedProfileV1; onOpen: () => void; onMove: (x: number, y: number) => void }) {
+function DesktopIcon({ item, profile, onOpen, onMove, onNudge }: { item: DesktopItem; profile: PersistedProfileV1; onOpen: () => void; onMove: (x: number, y: number) => void; onNudge: (deltaX: number, deltaY: number) => void }) {
   const app = item.kind === 'app' ? profile.installedApps.find((candidate) => candidate.id === item.targetId) : undefined
   const file = item.kind === 'file' ? profile.desktopFiles.find((candidate) => candidate.id === item.targetId) : undefined
   if (!app && !file) return null
-  return <button className="desktop-icon" draggable onDragEnd={(event) => onMove(event.clientX, event.clientY)} onDoubleClick={onOpen} style={{ transform: `translate(${item.x}px, ${item.y}px)` }} title={`Open ${app?.name ?? file?.name}`}>
+  return <button className="desktop-icon" draggable onDragEnd={(event) => onMove(event.clientX, event.clientY)} onDoubleClick={onOpen} onKeyDown={(event) => { if (!event.altKey) return; const directions: Record<string, [number, number]> = { ArrowLeft: [-16, 0], ArrowRight: [16, 0], ArrowUp: [0, -16], ArrowDown: [0, 16] }; const movement = directions[event.key]; if (!movement) return; event.preventDefault(); onNudge(...movement) }} style={{ transform: `translate(${item.x}px, ${item.y}px)` }} title={`Open ${app?.name ?? file?.name}. Hold Alt and use arrow keys to move.`}>
     <span className={`app-icon-tile app-icon-tile--${app?.category ?? 'files'}`}>{app ? <AppIcon name={app.icon} size={34} /> : <AppIcon name="document" size={34} />}</span>
     <span>{app?.shortName ?? file?.name}</span>
   </button>
@@ -268,7 +275,7 @@ function AppWindowFrame({ app, windowState, profile, onProfileChange, onMinimize
 
 function InternalApp({ appId, profile, onProfileChange }: { appId: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void }) {
   if (appId === 'browser') return <BrowserApp profile={profile} onBrowserChange={(browser) => onProfileChange({ ...profile, browser }, 'browser data')} />
-  if (appId === 'settings') return <SettingsApp settings={profile.settings} onChange={(settings) => onProfileChange({ ...profile, settings }, 'system settings')} />
+  if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => onProfileChange({ ...profile, settings }, 'system settings')} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} />
   if (appId === 'help') return <HelpCenter />
   if (appId === 'feedback') return <FeedbackApp />
   return null

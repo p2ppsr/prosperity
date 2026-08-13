@@ -26,7 +26,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'layouts', section: 'Desktop', title: 'Desktop and mobile layouts',
     body: [
       'Desktop icon positions and mobile home-screen order are separate. Moving an icon on one device class never changes its placement on the other.',
-      'Desktop positions are saved after a drag. Mobile apps can be reordered with drag and drop.'
+      'Desktop positions are saved after a drag. For precise or keyboard-only placement, focus an icon, hold Alt, and use the arrow keys.',
+      'Mobile apps can be reordered on the phone home screen or from System Settings on desktop. Both controls update only mobile order.'
     ]
   },
   {

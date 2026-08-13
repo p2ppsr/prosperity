@@ -3,7 +3,7 @@ import { CircleHelp, ExternalLink, Eye, EyeOff, MessageCircle, Plus, Search, Shi
 
 import { HELP_ARTICLES } from '../data/help'
 import { submitFeedback } from '../lib/usercom'
-import type { BrowserBookmark, BrowserCredential, BrowserHistoryEntry, PersistedProfileV1, SystemSettings } from '../types/manifest'
+import type { BabbageAppManifestV1, BrowserBookmark, BrowserCredential, BrowserHistoryEntry, MobileItem, PersistedProfileV1, SystemSettings } from '../types/manifest'
 
 const normalizeUrl = (value: string) => {
   const trimmed = value.trim()
@@ -88,7 +88,13 @@ function BrowserList({ items, empty, onOpen, onDelete }: { items: Array<BrowserB
 
 function GlobeEmpty() { return <div className="empty-orbit"><span /></div> }
 
-export function SettingsApp({ settings, onChange }: { settings: SystemSettings; onChange: (settings: SystemSettings) => void }) {
+export function SettingsApp({ settings, mobileItems, installedApps, onChange, onMoveMobile }: {
+  settings: SystemSettings
+  mobileItems: MobileItem[]
+  installedApps: BabbageAppManifestV1[]
+  onChange: (settings: SystemSettings) => void
+  onMoveMobile: (id: string, direction: -1 | 1) => void
+}) {
   const update = <K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) => onChange({ ...settings, [key]: value })
   const timezones = useMemo(() => {
     try { return Intl.supportedValuesOf('timeZone') } catch { return ['UTC', 'America/Los_Angeles', 'America/New_York', 'Europe/London', 'Asia/Tokyo'] }
@@ -105,6 +111,7 @@ export function SettingsApp({ settings, onChange }: { settings: SystemSettings; 
       <label className="toggle"><input type="checkbox" checked={settings.showSeconds} onChange={(event) => update('showSeconds', event.target.checked)} /><span />Show seconds</label>
       <label className="toggle"><input type="checkbox" checked={settings.reduceMotion} onChange={(event) => update('reduceMotion', event.target.checked)} /><span />Reduce motion</label>
     </section>
+    <section><h3>Mobile home layout</h3><p>Arrange the phone home screen without moving desktop icons.</p><div className="mobile-layout-settings">{[...mobileItems].sort((a, b) => a.order - b.order).map((item, index, ordered) => { const app = installedApps.find((candidate) => candidate.id === item.targetId); if (!app) return null; return <article key={item.id}><span><strong>{app.name}</strong><small>Position {index + 1}</small></span><span><button aria-label={`Move ${app.name} earlier on mobile`} disabled={index === 0} onClick={() => onMoveMobile(item.id, -1)}>Earlier</button><button aria-label={`Move ${app.name} later on mobile`} disabled={index === ordered.length - 1} onClick={() => onMoveMobile(item.id, 1)}>Later</button></span></article> })}</div></section>
   </div>
 }
 

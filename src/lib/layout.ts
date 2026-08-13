@@ -24,6 +24,25 @@ export function positionDesktopItem(
   }
 }
 
+export function nudgeDesktopItem(
+  profile: PersistedProfileV1,
+  id: string,
+  deltaX: number,
+  deltaY: number,
+  bounds: Pick<DesktopBounds, 'width' | 'height'>
+): PersistedProfileV1 {
+  const current = profile.desktopItems.find((item) => item.id === id)
+  if (!current) return profile
+  return {
+    ...profile,
+    desktopItems: profile.desktopItems.map((item) => item.id === id ? {
+      ...item,
+      x: Math.max(8, Math.min(bounds.width - 88, item.x + deltaX)),
+      y: Math.max(8, Math.min(bounds.height - 92, item.y + deltaY))
+    } : item)
+  }
+}
+
 export function reorderMobileItem(
   profile: PersistedProfileV1,
   id: string,
