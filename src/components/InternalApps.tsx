@@ -75,7 +75,7 @@ export function BrowserApp({ profile, onBrowserChange }: BrowserProps) {
     <div className="browser-tabs" role="tablist">
       {(['web', 'bookmarks', 'history', 'vault'] as const).map((item) => <button className={tab === item ? 'active' : ''} key={item} onClick={() => setTab(item)}>{item}</button>)}
     </div>
-    {tab === 'web' && <>
+    {tab === 'web' && <div className="browser-web-view">
       <form className="browser-address" onSubmit={navigate}>
         <input aria-label="Web address" value={address} onChange={(event) => setAddress(event.target.value)} />
         <button type="submit">Go</button>
@@ -83,10 +83,12 @@ export function BrowserApp({ profile, onBrowserChange }: BrowserProps) {
         <a aria-label="Open in browser tab" title="Open in browser tab" href={url} target="_blank" rel="noreferrer"><ExternalLink size={18} /><span>Open</span></a>
       </form>
       {error && <p className="inline-error" role="alert">{error}</p>}
-      {restriction
-        ? <section className="browser-frame-fallback"><ExternalLink /><span className="eyebrow">Open web compatibility</span><h2>This site opens in a browser tab</h2><p>{restriction} Babbage Browser still keeps this visit in your encrypted history.</p><a href={url} target="_blank" rel="noreferrer">Open {new URL(url).hostname} <ExternalLink size={16} /></a></section>
-        : <><div className="browser-compatibility">If a page stays blank, its security policy blocks embedded browsing. <a href={url} target="_blank" rel="noreferrer">Open it in a browser tab</a>.</div><BrowserFrame src={url} /></>}
-    </>}
+      <div className="browser-viewport">
+        {restriction
+          ? <section className="browser-frame-fallback"><ExternalLink /><span className="eyebrow">Open web compatibility</span><h2>This site opens in a browser tab</h2><p>{restriction} Babbage Browser still keeps this visit in your encrypted history.</p><a href={url} target="_blank" rel="noreferrer">Open {new URL(url).hostname} <ExternalLink size={16} /></a></section>
+          : <><div className="browser-compatibility">If a page stays blank, its security policy blocks embedded browsing. <a href={url} target="_blank" rel="noreferrer">Open it in a browser tab</a>.</div><BrowserFrame src={url} /></>}
+      </div>
+    </div>}
     {tab === 'bookmarks' && <BrowserList empty="No bookmarks yet." items={profile.browser.bookmarks} onOpen={(next) => { setAddress(next); setUrl(next); setTab('web') }} onDelete={(id) => onBrowserChange({ ...profile.browser, bookmarks: profile.browser.bookmarks.filter((item) => item.id !== id) })} />}
     {tab === 'history' && <BrowserList empty="Your encrypted history is empty." items={profile.browser.history} onOpen={(next) => { setAddress(next); setUrl(next); setTab('web') }} onDelete={(id) => onBrowserChange({ ...profile.browser, history: profile.browser.history.filter((item) => item.id !== id) })} />}
     {tab === 'vault' && <div className="vault-panel">
