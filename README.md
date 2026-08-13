@@ -25,6 +25,18 @@ capabilities, file associations, and preferred window dimensions. URLs must be
 HTTPS in production. Apps run in sandboxed iframe windows and may use their own
 BRC-100 permissions through the user's external wallet.
 
+Every embedded app frame delegates `local-network`, `loopback-network`, and the
+backwards-compatible `local-network-access` permission so modern browsers can
+reach WalletClient substrates on localhost. A constrained parent bridge handles
+nested XDM requests only for registered frames and forwards them through an
+originator-preserving CWI, Cicada, or JSON substrate. App requests remain scoped
+to the app's own hostname; they are never charged to `babbageos.com`.
+
+The root `manifest.json` follows BRC-116 and groups only Babbage OS's own
+encrypted LocalKVStore protocol, basket, and monthly storage authorization.
+AuthFetch, PACT, certificate, or application storage permissions belong in each
+embedded app's manifest because BRC-116 grants are isolated by originator.
+
 Stuff-backed file shortcuts use `BabbageDesktopFileV1`. A shortcut records only
 portable filesystem metadata and its Stuff URL; file contents stay under the
 Stuff filesystem protocol. MIME and extension associations select a compatible
