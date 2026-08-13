@@ -82,6 +82,7 @@ export type SystemSettings = {
   reduceMotion: boolean
   showSeconds: boolean
   desktopNotifications: boolean
+  timeMode: 'timezone' | 'localized'
 }
 
 export type BrowserBookmark = { id: string; title: string; url: string }

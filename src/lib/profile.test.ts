@@ -36,9 +36,10 @@ describe('wallet profile normalization', () => {
 
   it('repairs an invalid timezone and missing nested collections', () => {
     const normalized = normalizeProfile({
-      schema: 'babbage-os-profile', schemaVersion: '1.0', settings: { timezone: 'Mars/Olympus' }, browser: null
+      schema: 'babbage-os-profile', schemaVersion: '1.0', settings: { timezone: 'Mars/Olympus', timeMode: 'sun-clock-v0' }, browser: null
     })!
     expect(() => new Intl.DateTimeFormat(undefined, { timeZone: normalized.settings.timezone })).not.toThrow()
+    expect(normalized.settings.timeMode).toBe('timezone')
     expect(normalized.browser).toEqual({ bookmarks: [], history: [], credentials: [] })
   })
 

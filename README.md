@@ -44,6 +44,13 @@ and right-snap states. Babbage Browser keeps encrypted history, bookmarks, and
 credentials in the wallet profile; sites that prohibit iframe embedding receive
 an explicit browser-tab handoff instead of an unexplained blank frame.
 
+The taskbar clock can use a conventional wallet-persisted timezone or the
+optional Localized Sunrise–Sunset Time system. Localized Time displays `D` and
+`N` values relative to local sunrise and sunset. Solar events are calculated on
+the device after browser location consent; coordinates are never persisted or
+sent to a time service. Its adjacent Help button opens the dedicated manual
+article and credits the original `tyweb.us/localized-time.html` system.
+
 Stuff-backed file shortcuts use `BabbageDesktopFileV1`. A shortcut records only
 portable filesystem metadata and its Stuff URL; file contents stay under the
 Stuff filesystem protocol. MIME and extension associations select a compatible

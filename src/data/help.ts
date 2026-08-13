@@ -1,4 +1,4 @@
-export type HelpArticle = { id: string; section: string; title: string; body: string[] }
+export type HelpArticle = { id: string; section: string; title: string; body: string[]; sourceUrl?: string }
 
 export const HELP_ARTICLES: HelpArticle[] = [
   {
@@ -72,8 +72,18 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: 'settings', section: 'Personalization', title: 'Themes, wallpaper, and clock',
     body: [
-      'System Settings controls light, dark, or automatic theme; generated Babbage Dawn and Babbage Midnight wallpapers; custom wallpaper URLs; accent color; motion; timezone; and clock format.',
+      'System Settings controls light, dark, or automatic theme; generated Babbage Dawn and Babbage Midnight wallpapers; custom wallpaper URLs; accent color; motion; and either a conventional timezone clock or Localized Time.',
       'Saving settings writes the encrypted profile through your wallet. Theme previews take effect immediately.'
+    ]
+  },
+  {
+    id: 'localized-time', section: 'Personalization', title: 'Localized Sunrise–Sunset Time',
+    sourceUrl: 'https://tyweb.us/localized-time.html',
+    body: [
+      'Localized Time is an optional clock system based on the natural rhythm of sunrise and sunset at your current location. Choose Localized Time under System Settings → Time & motion. The normal timezone clock remains the default.',
+      'D means time relative to sunrise; N means time relative to sunset. Positive values are time since that event and negative values are time until it. For example, D1:00 is one hour after sunrise, N-:30 is thirty minutes before sunset, and D-1:00 is one hour before sunrise.',
+      'The first taskbar line shows the active day or night reference. The smaller second line is the crossworld value for the other solar transition. As in the original system, Babbage OS changes references one hour before sunrise or sunset so the approaching transition is immediately visible.',
+      'Babbage OS asks for browser location permission only after you select Localized Time. Sunrise and sunset are calculated locally on your device. Coordinates are not stored in your wallet, retained by Babbage OS, or sent to a time service. If permission is unavailable, the clock shows Location needed; return to browser site settings to enable location or select Timezone time.'
     ]
   },
   {

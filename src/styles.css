@@ -162,6 +162,11 @@ button { color: inherit; }
 .settings-hero p, .settings-app section > p { color: var(--muted); }
 .settings-app section { padding: 20px 0; border-top: 1px solid var(--line); }
 .settings-app h3 { margin: 0 0 14px; font: 700 17px 'Manrope'; }
+.time-mode-heading { margin-bottom: 10px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.time-mode-picker { display: grid; grid-template-columns: 1fr 1fr 38px; }
+.time-mode-picker .time-help-button { display: grid; place-items: center; padding: 0; color: var(--accent); }
+.localized-time-note { padding: 11px 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-soft); font-size: 12px; line-height: 1.55; }
+.help-source-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--accent); font-weight: 700; text-decoration: none; }
 .segmented { width: fit-content; display: flex; gap: 4px; padding: 4px; border-radius: 11px; background: var(--panel-soft); }
 .segmented button { padding: 7px 15px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; text-transform: capitalize; cursor: pointer; }
 .segmented button.active { color: #061020; background: var(--accent); }

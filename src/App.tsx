@@ -13,6 +13,7 @@ import { DEFAULT_APPS } from './data/apps'
 import { resolveFileApp } from './lib/fileAssociations'
 import { EMBEDDED_APP_PERMISSIONS, frameWalletBridge } from './lib/frameWalletBridge'
 import { nudgeDesktopItem, positionDesktopItem, reorderMobileItem } from './lib/layout'
+import { localizedTimeAt, type LocalizedTime } from './lib/localizedTime'
 import { metanetNotificationStore, type MetanetNotification } from './lib/notifications'
 import { createDefaultProfile, removeInstalledApp, walletInstallUrl, walletProfileStore } from './lib/profile'
 import { resizeSnappedWindow, snapWindowState, toggleMaximizedWindow, type WindowSnap } from './lib/windows'
@@ -42,10 +43,35 @@ function useMobile() {
 
 function Clock({ profile }: { profile: PersistedProfileV1 }) {
   const [now, setNow] = useState(new Date())
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'locating' | 'ready' | 'unavailable'>('idle')
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), profile.settings.showSeconds ? 1000 : 15000)
     return () => window.clearInterval(timer)
   }, [profile.settings.showSeconds])
+  useEffect(() => {
+    if (profile.settings.timeMode !== 'localized') { setLocationStatus('idle'); setCoordinates(null); return }
+    if (!navigator.geolocation) { setLocationStatus('unavailable'); return }
+    setLocationStatus('locating')
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        setCoordinates({ latitude: coords.latitude, longitude: coords.longitude })
+        setLocationStatus('ready')
+      },
+      () => setLocationStatus('unavailable'),
+      { enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 10000 }
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [profile.settings.timeMode])
+  const localized: LocalizedTime | null = useMemo(() => {
+    if (!coordinates) return null
+    try { return localizedTimeAt(now, coordinates.latitude, coordinates.longitude) } catch { return null }
+  }, [coordinates, now])
+  if (profile.settings.timeMode === 'localized') {
+    const primary = localized?.primary ?? (locationStatus === 'unavailable' ? 'D/N' : '…')
+    const secondary = localized?.secondary ?? (locationStatus === 'unavailable' ? 'Location needed' : 'Locating')
+    return <time dateTime={now.toISOString()} title={localized ? `Localized Time: ${localized.primary}; crossworld ${localized.secondary}` : secondary}><strong>{primary}</strong><span>{secondary}</span></time>
+  }
   const formatted = new Intl.DateTimeFormat(undefined, {
     timeZone: profile.settings.timezone,
     hour: 'numeric', minute: '2-digit', second: profile.settings.showSeconds ? '2-digit' : undefined,
@@ -66,6 +92,7 @@ export default function App() {
   const [addAppOpen, setAddAppOpen] = useState(false)
   const [addFileOpen, setAddFileOpen] = useState(false)
   const [mobileAppId, setMobileAppId] = useState<string | null>(null)
+  const [mobileResourceUrl, setMobileResourceUrl] = useState<string | undefined>()
   const [mobileEditing, setMobileEditing] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState<MetanetNotification[]>([])
@@ -166,7 +193,7 @@ export default function App() {
   const openApp = useCallback((appId: string, url?: string, title?: string) => {
     const app = profile.installedApps.find((candidate) => candidate.id === appId)
     if (!app) return
-    if (isMobile) { setMobileAppId(appId); setLauncherOpen(false); return }
+    if (isMobile) { setMobileAppId(appId); setMobileResourceUrl(url); setLauncherOpen(false); return }
     const existing = windows.find((item) => item.appId === appId && (!url || item.url === url))
     if (existing) { focusWindow(existing.id); setLauncherOpen(false); return }
     const width = Math.min(app.window.width, window.innerWidth - 56)
@@ -273,13 +300,13 @@ export default function App() {
             onDragStop={(_, data) => updateWindow(windowState.id, { x: data.x, y: data.y })}
             onResizeStop={(_, __, element, ___, position) => updateWindow(windowState.id, { ...position, width: element.offsetWidth, height: element.offsetHeight })}
           >
-            <AppWindowFrame app={app} windowState={windowState} profile={profile} onProfileChange={(next, reason) => void persist(next, reason)} onSnapLeft={() => snapWindow(windowState.id, 'left')} onSnapRight={() => snapWindow(windowState.id, 'right')} onMinimize={() => minimizeWindow(windowState.id)} onMaximize={() => maximizeWindow(windowState.id)} onClose={() => closeWindow(windowState.id)} />
+            <AppWindowFrame app={app} windowState={windowState} profile={profile} onProfileChange={(next, reason) => void persist(next, reason)} onOpenApp={openApp} onSnapLeft={() => snapWindow(windowState.id, 'left')} onSnapRight={() => snapWindow(windowState.id, 'right')} onMinimize={() => minimizeWindow(windowState.id)} onMaximize={() => maximizeWindow(windowState.id)} onClose={() => closeWindow(windowState.id)} />
           </Rnd>
         })}
       </div>
       <Taskbar profile={profile} windows={windows} walletStatus={walletStatus} launcherOpen={launcherOpen} notificationsOpen={notificationsOpen} notificationCount={notifications.length} onLauncher={() => setLauncherOpen((value) => !value)} onWindow={focusWindow} onBitGenius={() => openApp('bitgenius')} onFeedback={() => openApp('feedback')} onHelp={() => openApp('help')} onSettings={() => openApp('settings')} onNotifications={() => { setNotificationsOpen((value) => !value); void refreshNotifications() }} />
       {launcherOpen && <Launcher apps={launcherApps} query={launcherQuery} onQuery={setLauncherQuery} onOpen={openApp} onAddApp={() => setAddAppOpen(true)} onAddFile={() => setAddFileOpen(true)} />}
-    </div> : <MobileHome profile={profile} activeApp={activeMobileApp} editing={mobileEditing} walletStatus={walletStatus} notificationCount={notifications.length} onEditing={setMobileEditing} onOpen={openApp} onCloseApp={() => setMobileAppId(null)} onProfileChange={(next, reason) => void persist(next, reason)} onMove={(id, direction) => {
+    </div> : <MobileHome profile={profile} activeApp={activeMobileApp} activeResourceUrl={mobileResourceUrl} editing={mobileEditing} walletStatus={walletStatus} notificationCount={notifications.length} onEditing={setMobileEditing} onOpen={openApp} onCloseApp={() => { setMobileAppId(null); setMobileResourceUrl(undefined) }} onProfileChange={(next, reason) => void persist(next, reason)} onMove={(id, direction) => {
       const next = reorderMobileItem(profile, id, direction < 0 ? -1 : 1)
       if (next === profile) return
       void persist(next, 'mobile home order')
@@ -302,14 +329,14 @@ function DesktopIcon({ item, profile, onOpen, onMove, onNudge }: { item: Desktop
   </button>
 }
 
-function AppWindowFrame({ app, windowState, profile, onProfileChange, onSnapLeft, onSnapRight, onMinimize, onMaximize, onClose }: { app: BabbageAppManifestV1; windowState: WindowState; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onSnapLeft: () => void; onSnapRight: () => void; onMinimize: () => void; onMaximize: () => void; onClose: () => void }) {
+function AppWindowFrame({ app, windowState, profile, onProfileChange, onOpenApp, onSnapLeft, onSnapRight, onMinimize, onMaximize, onClose }: { app: BabbageAppManifestV1; windowState: WindowState; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onOpenApp: (appId: string, url?: string, title?: string) => void; onSnapLeft: () => void; onSnapRight: () => void; onMinimize: () => void; onMaximize: () => void; onClose: () => void }) {
   return <section className="os-window" aria-label={`${windowState.title} window`}>
     <header className="window-titlebar">
       <div className="window-titlebar__drag"><span className={`mini-app-icon app-icon-tile--${app.category}`}><AppIcon name={app.icon} size={17} /></span><strong>{windowState.title}</strong>{app.capabilities.includes('wallet') && <span className="wallet-native"><LockKeyhole size={12} /> Wallet native</span>}</div>
       <div className="window-actions"><button aria-label={windowState.snap === 'left' ? 'Restore from left' : 'Snap left'} title="Snap left" onClick={onSnapLeft}><PanelLeft /></button><button aria-label={windowState.snap === 'right' ? 'Restore from right' : 'Snap right'} title="Snap right" onClick={onSnapRight}><PanelRight /></button><button aria-label="Minimize" onClick={onMinimize}><Minus /></button><button aria-label={windowState.maximized ? 'Restore' : 'Maximize'} onClick={onMaximize}>{windowState.maximized ? <RotateCcw /> : <Maximize2 />}</button><button className="window-close" aria-label="Close" onClick={onClose}><X /></button></div>
     </header>
     <div className="window-content">
-      {app.launch.kind === 'iframe' ? <><WalletEnabledFrame title={windowState.title} src={windowState.url ?? app.launch.url} /><a className="external-app-link" href={windowState.url ?? app.launch.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open externally</a></> : <InternalApp appId={app.id} resourceUrl={windowState.url} profile={profile} onProfileChange={onProfileChange} />}
+      {app.launch.kind === 'iframe' ? <><WalletEnabledFrame title={windowState.title} src={windowState.url ?? app.launch.url} /><a className="external-app-link" href={windowState.url ?? app.launch.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open externally</a></> : <InternalApp appId={app.id} resourceUrl={windowState.url} profile={profile} onProfileChange={onProfileChange} onOpenApp={onOpenApp} />}
     </div>
   </section>
 }
@@ -323,7 +350,7 @@ function WalletEnabledFrame({ title, src, className }: { title: string; src: str
   return <iframe ref={frameRef} className={className} title={title} src={src} sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads allow-modals" allow={EMBEDDED_APP_PERMISSIONS} />
 }
 
-function InternalApp({ appId, resourceUrl, profile, onProfileChange }: { appId: string; resourceUrl?: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void }) {
+function InternalApp({ appId, resourceUrl, profile, onProfileChange, onOpenApp }: { appId: string; resourceUrl?: string; profile: PersistedProfileV1; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onOpenApp: (appId: string, url?: string, title?: string) => void }) {
   if (appId === 'stuff') return <StuffApp profile={profile} initialResourceUrl={resourceUrl} onProfileChange={onProfileChange} />
   if (appId === 'browser') return <BrowserApp profile={profile} onBrowserChange={(browser) => onProfileChange({ ...profile, browser }, 'browser data')} />
   if (appId === 'settings') return <SettingsApp settings={profile.settings} mobileItems={profile.mobileItems} installedApps={profile.installedApps} onChange={(settings) => {
@@ -333,8 +360,8 @@ function InternalApp({ appId, resourceUrl, profile, onProfileChange }: { appId: 
       return
     }
     onProfileChange({ ...profile, settings }, 'system settings')
-  }} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} onRemoveApp={(id) => { const next = removeInstalledApp(profile, id); if (next !== profile) onProfileChange(next, 'removed app') }} />
-  if (appId === 'help') return <HelpCenter />
+  }} onLocalizedTimeHelp={() => onOpenApp('help', 'babbage://help/localized-time', 'Localized Time help')} onMoveMobile={(id, direction) => { const next = reorderMobileItem(profile, id, direction); if (next !== profile) onProfileChange(next, 'mobile home order') }} onRemoveApp={(id) => { const next = removeInstalledApp(profile, id); if (next !== profile) onProfileChange(next, 'removed app') }} />
+  if (appId === 'help') return <HelpCenter initialArticleId={resourceUrl?.endsWith('/localized-time') ? 'localized-time' : undefined} />
   if (appId === 'feedback') return <FeedbackApp />
   return null
 }
@@ -368,9 +395,9 @@ function NotificationCenter({ walletStatus, notifications, loading, error, saveM
   return <aside className="notification-center" onMouseDown={(event) => event.stopPropagation()}><header><div><span className="eyebrow">Metanet activity</span><h2>Notifications</h2></div><div className="notification-header-actions"><button className="notification-refresh" aria-label="Refresh notifications" disabled={loading || walletStatus !== 'connected'} onClick={onRefresh}><RefreshCw className={loading ? 'spinning' : ''} /></button><button className="notification-refresh" aria-label="Close notifications" onClick={onClose}><X /></button></div></header><article><span className={`status-dot status-dot--${walletStatus}`} /><div><strong>{walletStatus === 'connected' ? 'Wallet connected' : 'Exploring as a guest'}</strong><p>{walletStatus === 'connected' ? 'Messages and incoming payments refresh automatically.' : 'Connect Babbage Go to receive Metanet activity.'}</p></div></article>{error && <p className="notification-error" role="alert">{error}</p>}{notifications.map((notification) => <article className="metanet-notification" key={notification.id}><Bell /><button className="notification-body" disabled={!notification.url} onClick={() => onOpen(notification)}><strong>{notification.title}</strong><p>{notification.body}</p>{notification.receivedAt && <time>{new Date(notification.receivedAt).toLocaleString()}</time>}</button><button className="notification-dismiss" aria-label={`Dismiss ${notification.title}`} onClick={() => onDismiss(notification)}><Check /></button></article>)}{walletStatus === 'connected' && !loading && !notifications.length && !error && <p className="notification-empty">You’re all caught up.</p>}{saveMessage && <article><Cloud /><div><strong>Profile</strong><p>{saveMessage}</p></div></article>}<button className="notification-feedback" onClick={onFeedback}><MessageCircle /> Send Babbage OS feedback</button></aside>
 }
 
-function MobileHome({ profile, activeApp, editing, walletStatus, notificationCount, onEditing, onOpen, onCloseApp, onProfileChange, onMove, onNotifications, onFeedback, onHelp, onSettings }: { profile: PersistedProfileV1; activeApp?: BabbageAppManifestV1; editing: boolean; walletStatus: WalletStatus; notificationCount: number; onEditing: (value: boolean) => void; onOpen: (id: string) => void; onCloseApp: () => void; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onMove: (id: string, direction: number) => void; onNotifications: () => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void }) {
+function MobileHome({ profile, activeApp, activeResourceUrl, editing, walletStatus, notificationCount, onEditing, onOpen, onCloseApp, onProfileChange, onMove, onNotifications, onFeedback, onHelp, onSettings }: { profile: PersistedProfileV1; activeApp?: BabbageAppManifestV1; activeResourceUrl?: string; editing: boolean; walletStatus: WalletStatus; notificationCount: number; onEditing: (value: boolean) => void; onOpen: (id: string, url?: string, title?: string) => void; onCloseApp: () => void; onProfileChange: (profile: PersistedProfileV1, reason: string) => void; onMove: (id: string, direction: number) => void; onNotifications: () => void; onFeedback: () => void; onHelp: () => void; onSettings: () => void }) {
   const items = [...profile.mobileItems].sort((a, b) => a.order - b.order)
-  if (activeApp) return <section className="mobile-app"><header><button onClick={onCloseApp}><ArrowLeft /> Home</button><div><AppIcon name={activeApp.icon} size={19} /><strong>{activeApp.name}</strong></div>{activeApp.launch.kind === 'iframe' ? <a href={activeApp.launch.url} target="_blank" rel="noreferrer"><ExternalLink /></a> : <span />}</header><div>{activeApp.launch.kind === 'iframe' ? <WalletEnabledFrame title={activeApp.name} src={activeApp.launch.url} /> : <InternalApp appId={activeApp.id} profile={profile} onProfileChange={onProfileChange} />}</div></section>
+  if (activeApp) return <section className="mobile-app"><header><button onClick={onCloseApp}><ArrowLeft /> Home</button><div><AppIcon name={activeApp.icon} size={19} /><strong>{activeApp.name}</strong></div>{activeApp.launch.kind === 'iframe' ? <a href={activeApp.launch.url} target="_blank" rel="noreferrer"><ExternalLink /></a> : <span />}</header><div>{activeApp.launch.kind === 'iframe' ? <WalletEnabledFrame title={activeApp.name} src={activeApp.launch.url} /> : <InternalApp appId={activeApp.id} resourceUrl={activeResourceUrl} profile={profile} onProfileChange={onProfileChange} onOpenApp={onOpen} />}</div></section>
   return <section className="mobile-home">
     <header><div><span className="mobile-logo"><AppWindow /></span><div><span className="eyebrow">Personal computing</span><strong>Babbage OS</strong></div></div><button aria-label={editing ? 'Finish editing mobile home' : 'Edit mobile home'} onClick={() => onEditing(!editing)}>{editing ? 'Done' : <MoreHorizontal />}</button></header>
     <div className="mobile-widget"><div><span className="eyebrow">Your Metanet</span><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}.</h1><p>{walletStatus === 'connected' ? 'Your encrypted workspace is connected.' : 'Explore freely. Connect only when you save.'}</p></div><Clock profile={profile} /></div>
