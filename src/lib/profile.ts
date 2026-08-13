@@ -28,6 +28,17 @@ export const createDefaultProfile = (): PersistedProfileV1 => ({
 
 const PROFILE_KEY = 'profile-v1'
 const CONTEXT = 'babbage-os'
+const WALLET_DISCOVERY_TIMEOUT_MS = 2500
+
+function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(message)), timeoutMs)
+    operation.then(
+      (value) => { window.clearTimeout(timeout); resolve(value) },
+      (error) => { window.clearTimeout(timeout); reject(error) }
+    )
+  })
+}
 
 export class WalletProfileStore {
   private runtime?: Promise<{ wallet: WalletClient; kv: LocalKVStore }>
@@ -45,7 +56,12 @@ export class WalletProfileStore {
   async isConnected(): Promise<boolean> {
     try {
       const { wallet } = await this.getRuntime()
-      return (await wallet.isAuthenticated({})).authenticated === true
+      const result = await withTimeout(
+        wallet.isAuthenticated({}),
+        WALLET_DISCOVERY_TIMEOUT_MS,
+        'No wallet responded.'
+      )
+      return result.authenticated === true
     } catch {
       return false
     }
