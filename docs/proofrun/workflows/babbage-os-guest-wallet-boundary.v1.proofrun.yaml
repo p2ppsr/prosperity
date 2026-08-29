@@ -1,0 +1,124 @@
+apiVersion: proofrun.dev/v1
+kind: Workflow
+metadata:
+  id: babbage-os-guest-wallet-boundary
+  name: Guest exploration, wallet boundary, and feedback
+  version: 1.0.0
+  description: People exploring Babbage OS with or without Babbage Go installed.
+  labels:
+    migration: proofrunVersion-1
+    repository: p2ppsr/prosperity
+    category: onboard
+target:
+  type: web
+  url: https://babbageos.com
+  environment: production
+matrix:
+  maxCases: 2
+  exclude:
+    - {}
+  include:
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.chromium-desktop@1.0.0
+      legacyDesktopBrowser: chrome
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: p2ppsr.metanet-client-macos@1.0.0
+      legacyDesktopWallet: wallet-absent
+      legacyNetworks: mainnet
+capabilities:
+  - browser
+  - wallet.profile-restore
+journeys:
+  - id: onboard
+    goal: Guest exploration, wallet boundary, and feedback
+    role: People exploring Babbage OS with or without Babbage Go installed.
+    maxActions: 24
+    maxSeconds: 90
+    steps:
+      - id: explore-desktop
+        instruction: Open the desktop and launch built-in surfaces without a wallet.
+        expected: "UI: Nine default desktop icons and the taskbar render without overflow."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: request-persistence
+        instruction: Change System Settings while no wallet is available.
+        expected: "UI: A bounded WalletClient check opens the Babbage Go/get-a-wallet dialog within five seconds."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: mobile-home
+        instruction: Render the production surface at 390x844.
+        expected: "UI: The independent mobile home screen fits without horizontal overflow."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: submit-feedback
+        instruction: Send a clearly labeled production readiness probe from the system tray.
+        expected: "UI: A success confirmation is shown. Domain: UserCom accepts the feedback payload without wallet identity."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+assertions:
+  - id: uiappearance-1
+    type: visual
+    severity: fail
+    statement: Desktop and phone layouts have no horizontal overflow or overlapping controls.
+  - id: audienceintuition-1
+    type: agent
+    severity: fail
+    statement: Guest mode and the wallet boundary are explained before connection.
+  - id: customertrust-1
+    type: security
+    severity: fail
+    statement: The dialog states what is saved and that keys stay with the external wallet.
+  - id: flowsuccess-1
+    type: oracle
+    severity: fail
+    statement: Wallet absence never blocks exploration and save intent is preserved for connection.
+  - id: telemetryobservability-1
+    type: oracle
+    severity: fail
+    statement: Feedback success is visible to the user.
+  - id: reliabilityrepeatability-1
+    type: oracle
+    severity: fail
+    statement: Reloading restores the default guest surface.
+  - id: performance-1
+    type: performance
+    severity: fail
+    statement: Wallet absence is resolved to an actionable dialog within five seconds.
+  - id: required-state-1
+    type: oracle
+    severity: fail
+    statement: Production serves a valid certificate and Babbage OS HTML.
+    tags:
+      - migrated-preflight
+  - id: required-state-2
+    type: oracle
+    severity: fail
+    statement: Spend cap is zero.
+    tags:
+      - migrated-preflight
+policy:
+  unsafeContent: stop
+  highImpactActions: require-approval
+  allowedHosts:
+    - babbageos.com
+  spendLimit: 0
+  warnExitCode: 0
+remediation:
+  mode: manual
+  allowed: true
+  proposalOnly: true
+  requiredApprovers: 1
+uses: []
