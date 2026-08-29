@@ -1,0 +1,138 @@
+apiVersion: proofrun.dev/v1
+kind: Workflow
+metadata:
+  id: babbage-os-connected-wallet-persistence
+  name: Connected Babbage Go encrypted profile persistence
+  version: 1.0.0
+  description: Babbage Go users who expect their OS profile to follow their wallet.
+  labels:
+    migration: proofrunVersion-1
+    repository: p2ppsr/prosperity
+    category: authenticate
+target:
+  type: web
+  url: https://babbageos.com
+  environment: production
+matrix:
+  maxCases: 3
+  exclude:
+    - {}
+  include:
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.chromium-desktop@1.0.0
+      legacyDesktopBrowser: chrome
+      legacyMobileWallets: babbage-go
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.chromium-mobile@1.0.0
+      legacyMobileBrowser: chrome-responsive
+      legacyMobileWallets: babbage-go
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: p2ppsr.metanet-client-macos@1.0.0
+      legacyDesktopWallet: babbage-go
+      legacyMobileWallets: babbage-go
+      legacyNetworks: mainnet
+capabilities:
+  - browser
+  - wallet.profile-restore
+journeys:
+  - id: authenticate
+    goal: Connected Babbage Go encrypted profile persistence
+    role: Babbage Go users who expect their OS profile to follow their wallet.
+    maxActions: 18
+    maxSeconds: 90
+    steps:
+      - id: connect
+        instruction: Change a setting and authorize Babbage Go when prompted.
+        expected: "UI: Saved to your wallet confirmation appears."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: persist-profile
+        instruction: Move a desktop icon, reorder one mobile icon, and add a browser bookmark.
+        expected: "Domain: Encrypted LocalKVStore profile-v1 is updated."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: reload
+        instruction: Reload and revisit desktop and mobile layouts.
+        expected: "UI: Settings UI: layouts UI: and bookmark are restored independently."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+assertions:
+  - id: uiappearance-1
+    type: visual
+    severity: fail
+    statement: Saved state renders without layout drift.
+  - id: audienceintuition-1
+    type: agent
+    severity: fail
+    statement: The wallet prompt explains the persistence purpose.
+  - id: customertrust-1
+    type: security
+    severity: fail
+    statement: No wallet key or plaintext credential is stored by Babbage OS.
+  - id: flowsuccess-1
+    type: oracle
+    severity: fail
+    statement: All profile fields survive reload through encrypted LocalKVStore.
+  - id: telemetryobservability-1
+    type: oracle
+    severity: fail
+    statement: Browser console contains no unexpected errors.
+  - id: reliabilityrepeatability-1
+    type: oracle
+    severity: fail
+    statement: Cleanup returns the profile to its starting state.
+  - id: performance-1
+    type: performance
+    severity: fail
+    statement: Wallet prompt and save confirmation meet thresholds.
+  - id: required-state-1
+    type: oracle
+    severity: fail
+    statement: Babbage Go is installed
+    tags:
+      - migrated-preflight
+  - id: required-state-2
+    type: oracle
+    severity: fail
+    statement: unlocked
+    tags:
+      - migrated-preflight
+  - id: required-state-3
+    type: oracle
+    severity: fail
+    statement: and available to WalletClient.
+    tags:
+      - migrated-preflight
+  - id: required-state-4
+    type: oracle
+    severity: fail
+    statement: The BRC-116 manifest groups profile and Stuff LocalKV scopes with a 100000-satoshi monthly storage authorization.
+    tags:
+      - migrated-preflight
+policy:
+  unsafeContent: stop
+  highImpactActions: require-approval
+  allowedHosts:
+    - babbageos.com
+  spendLimit: 100000
+  warnExitCode: 0
+remediation:
+  mode: manual
+  allowed: true
+  proposalOnly: true
+  requiredApprovers: 1
+uses: []

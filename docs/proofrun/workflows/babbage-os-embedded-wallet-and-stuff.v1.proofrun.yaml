@@ -1,0 +1,196 @@
+apiVersion: proofrun.dev/v1
+kind: Workflow
+metadata:
+  id: babbage-os-embedded-wallet-and-stuff
+  name: Embedded app wallet substrates and Stuff desktop handoff
+  version: 1.0.0
+  description: Desktop and mobile users who run wallet-native apps inside Babbage OS.
+  labels:
+    migration: proofrunVersion-1
+    repository: p2ppsr/prosperity
+    category: authenticate
+target:
+  type: web
+  url: https://babbageos.com
+  environment: production
+matrix:
+  maxCases: 7
+  exclude:
+    - {}
+  include:
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.chromium-desktop@1.0.0
+      legacyDesktopBrowser: chrome
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.webkit-desktop@1.0.0
+      legacyDesktopBrowser: safari
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.chromium-mobile@1.0.0
+      legacyMobileBrowser: chrome-responsive
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: device.webkit-mobile@1.0.0
+      legacyMobileBrowser: safari-responsive
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: p2ppsr.metanet-client-macos@1.0.0
+      legacyDesktopWallet: babbage-go-localhost
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: p2ppsr.metanet-client-macos@1.0.0
+      legacyDesktopWallet: injected-cwi
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+    - agent: openai-computer
+      profile: customer.impatient-newcomer@1.0.0
+      accessibility: standard
+      device: p2ppsr.metanet-client-macos@1.0.0
+      legacyDesktopWallet: xdm
+      legacyMobileWallets: react-native,xdm
+      legacyNetworks: mainnet
+capabilities:
+  - browser
+  - wallet.profile-restore
+journeys:
+  - id: authenticate
+    goal: Embedded app wallet substrates and Stuff desktop handoff
+    role: Desktop and mobile users who run wallet-native apps inside Babbage OS.
+    maxActions: 30
+    maxSeconds: 90
+    steps:
+      - id: guest-stuff
+        instruction: Open Stuff, inspect the empty guest explorer, and choose New file.
+        expected: "UI: Explorer opens without a wallet. UI: Connect to save in Stuff appears only after the write attempt."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: grouped-storage
+        instruction: Connect Babbage Go and approve the grouped Babbage OS profile and Stuff LocalKV permissions.
+        expected: "UI: One coherent grouped prompt covers both exact encrypted LocalKV protocols UI: baskets UI: and monthly spending authorization."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: stuff-file
+        instruction: Create a folder and Markdown file, edit and save it, add it to the desktop, reload, and reopen the shortcut.
+        expected: "UI: The shortcut reopens through Stuff or its exact file association. Domain: Encrypted filesystem nodes and BabbageDesktopFileV1 shortcut persist."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: nested-app-wallet
+        instruction: Open Convo and Metanet Docs inside Babbage OS, then exercise each wallet-authenticated landing state.
+        expected: "UI: Apps do not report that Metanet Client is missing. Domain: Nested XDM or delegated localhost transport reaches the wallet with each app hostname preserved as originator."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+      - id: responsive
+        instruction: Repeat Stuff open/save/reopen and an embedded wallet app on phone-sized Chrome and Safari layouts.
+        expected: "UI: Mobile home and full-screen app surfaces remain usable without changing desktop icon positions."
+        evidence:
+          - screenshot
+          - trace
+        onFailure: stop
+assertions:
+  - id: uiappearance-1
+    type: visual
+    severity: fail
+    statement: Stuff controls
+  - id: uiappearance-2
+    type: visual
+    severity: fail
+    statement: files
+  - id: uiappearance-3
+    type: visual
+    severity: fail
+    statement: dialogs
+  - id: uiappearance-4
+    type: visual
+    severity: fail
+    statement: and embedded apps fit desktop and mobile viewports.
+  - id: audienceintuition-1
+    type: agent
+    severity: fail
+    statement: Wallet ownership and grouped permission purpose are clear.
+  - id: customertrust-1
+    type: security
+    severity: fail
+    statement: The relay accepts only registered frame sources
+  - id: customertrust-2
+    type: security
+    severity: fail
+    statement: exact origins
+  - id: customertrust-3
+    type: security
+    severity: fail
+    statement: and BRC-100 methods.
+  - id: flowsuccess-1
+    type: oracle
+    severity: fail
+    statement: Stuff persists and embedded apps reach localhost or another available WalletClient substrate.
+  - id: telemetryobservability-1
+    type: oracle
+    severity: fail
+    statement: No private file
+  - id: telemetryobservability-2
+    type: oracle
+    severity: fail
+    statement: wallet
+  - id: telemetryobservability-3
+    type: oracle
+    severity: fail
+    statement: or app content enters telemetry.
+  - id: reliabilityrepeatability-1
+    type: oracle
+    severity: fail
+    statement: Cleanup removes every synthetic file and shortcut.
+  - id: performance-1
+    type: performance
+    severity: fail
+    statement: Guest fallback and wallet discovery are bounded.
+  - id: required-state-1
+    type: oracle
+    severity: fail
+    statement: BRC-116 manifest contains exact babbage os and filesystem protocol/basket scopes.
+    tags:
+      - migrated-preflight
+  - id: required-state-2
+    type: oracle
+    severity: fail
+    statement: Embedded frames delegate local-network, loopback-network, and local-network-access.
+    tags:
+      - migrated-preflight
+policy:
+  unsafeContent: stop
+  highImpactActions: require-approval
+  allowedHosts:
+    - babbageos.com
+  spendLimit: 100000
+  warnExitCode: 0
+remediation:
+  mode: manual
+  allowed: true
+  proposalOnly: true
+  requiredApprovers: 1
+uses: []
