@@ -3,7 +3,7 @@ kind: Workflow
 metadata:
   id: babbage-os-connected-wallet-persistence
   name: Connected Babbage Go encrypted profile persistence
-  version: 1.0.0
+  version: 1.0.1
   description: Babbage Go users who expect their OS profile to follow their wallet.
   labels:
     migration: proofrunVersion-1
@@ -28,7 +28,7 @@ matrix:
     - agent: openai-computer
       profile: customer.impatient-newcomer@1.0.0
       accessibility: standard
-      device: device.chromium-mobile@1.0.0
+      device: device.chromium-mobile@1.1.0
       legacyMobileBrowser: chrome-responsive
       legacyMobileWallets: babbage-go
       legacyNetworks: mainnet
