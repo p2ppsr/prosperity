@@ -3,7 +3,7 @@ kind: Workflow
 metadata:
   id: babbage-os-embedded-wallet-and-stuff
   name: Embedded app wallet substrates and Stuff desktop handoff
-  version: 1.0.0
+  version: 1.0.1
   description: Desktop and mobile users who run wallet-native apps inside Babbage OS.
   labels:
     migration: proofrunVersion-1
@@ -35,7 +35,7 @@ matrix:
     - agent: openai-computer
       profile: customer.impatient-newcomer@1.0.0
       accessibility: standard
-      device: device.chromium-mobile@1.0.0
+      device: device.chromium-mobile@1.1.0
       legacyMobileBrowser: chrome-responsive
       legacyMobileWallets: react-native,xdm
       legacyNetworks: mainnet
